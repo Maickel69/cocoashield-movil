@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, RefreshCw, MapPin, Database, Cloud } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { DISEASE_CATALOG } from './Database';
 
 // Offline SVGs for thumbnails in history list
@@ -59,27 +59,15 @@ export default function HistoryTab({ history, isOnline, onSyncNow, unsyncedCount
       <div className="hist-header-row">
         <div>
           <h1 className="tab-title">Mi Historial</h1>
-          <p className="tab-subtitle">SQLite local DB</p>
+          <p className="tab-subtitle">Diagnósticos realizados</p>
         </div>
-
-        {/* Sync Trigger button */}
-        {unsyncedCount > 0 && (
-          <button
-            onClick={onSyncNow}
-            disabled={!isOnline}
-            className={isOnline ? 'btn-sync-active animate-pulse' : 'btn-sync-disabled'}
-          >
-            <RefreshCw size={12} className={isOnline ? 'animate-spin' : ''} />
-            Sincronizar
-          </button>
-        )}
       </div>
 
       {/* History Cards List */}
       <div className="hist-list">
         {history.length === 0 ? (
           <div className="hist-empty">
-            <Database size={40} style={{ color: '#cbd5e1' }} />
+            <span style={{ fontSize: 36 }}>🌿</span>
             <h3 className="hist-empty-title">Sin registros aún</h3>
             <p className="hist-empty-desc">
               Realiza diagnósticos en campo desde la pestaña de cámara para ver tus fichas aquí.
@@ -109,28 +97,13 @@ export default function HistoryTab({ history, isOnline, onSyncNow, unsyncedCount
                     <span className="hist-card-date">{formatDate(record.date)}</span>
                   </div>
 
-                  {/* Location and sync status bottom row */}
+                  {/* Location row */}
                   <div className="hist-card-footer">
                     <div className="hist-card-gps">
                       <MapPin size={10} style={{ color: 'var(--color-primary)' }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {record.locationName}
                       </span>
-                    </div>
-
-                    {/* Sync Indicator */}
-                    <div className={`hist-card-sync-badge ${record.synced ? 'synced' : 'pending'}`}>
-                      {record.synced ? (
-                        <>
-                          <Cloud size={10} style={{ fill: 'currentColor' }} />
-                          <span>Subido</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock size={10} />
-                          <span>Pendiente</span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>

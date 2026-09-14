@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Map, History, Battery, Wifi, WifiOff, Compass, Settings } from 'lucide-react';
+import { Camera, History, Wifi, Compass, Settings } from 'lucide-react';
 
 export default function DeviceShell({
   isOnline,
@@ -34,18 +34,6 @@ export default function DeviceShell({
 
         {/* Dynamic Signal/Network Indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {unsyncedCount > 0 && (
-            <span
-              style={{
-                height: '6px',
-                width: '6px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-warning)',
-                display: 'inline-block'
-              }}
-              title="Sincronización Pendiente"
-            />
-          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             {isOnline ? (
               <>
@@ -53,10 +41,7 @@ export default function DeviceShell({
                 <span style={{ fontSize: '9px', color: '#A7C5B0' }}>4G</span>
               </>
             ) : (
-              <>
-                <WifiOff size={13} style={{ color: 'var(--color-critical)' }} />
-                <span style={{ fontSize: '9px', color: 'var(--color-critical)', fontWeight: 'bold' }}>OFFLINE</span>
-              </>
+              <Wifi size={13} style={{ color: '#94a3b8' }} />
             )}
           </div>
         </div>
