@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CocoaShield AI</string>
+    <string name="title_activity_main">CocoaShield AI</string>
+    <string name="package_name">com.cocoashield.ai</string>
+    <string name="custom_url_scheme">com.cocoashield.ai</string>
+</resources>
