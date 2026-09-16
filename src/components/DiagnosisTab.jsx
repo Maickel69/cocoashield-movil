@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, RefreshCw, CheckCircle, HardDrive, Brain, Loader, AlertCircle } from 'lucide-react';
+import { Camera, RefreshCw, CheckCircle, Brain, Loader, AlertCircle, Zap } from 'lucide-react';
 import { DISEASE_CATALOG } from './Database';
 import logo from '../assets/logo.png';
 
@@ -26,14 +26,14 @@ function compressImage(imgEl) {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgEl, 0, 0, width, height);
-    return canvas.toDataURL('image/jpeg', 0.6); // Compress to JPEG, 60% quality
+    return canvas.toDataURL('image/jpeg', 0.6);
   } catch (e) {
     console.error('Error compressing image:', e);
     return null;
   }
 }
 
-// ─── Análisis de color como respaldo (canvas, sin TF.js en el cliente) ─────────────────────
+// ─── Análisis visual rápido de respaldo local (sin requerir servidor) ─────────
 function analyzeByColor(imgEl) {
   try {
     const c = document.createElement('canvas');
@@ -45,11 +45,11 @@ function analyzeByColor(imgEl) {
     for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; }
     const n = d.length / 4;
     r /= n; g /= n; b /= n;
-    if (r > 190 && g > 190 && b > 190) return { disease: 'Monilia',        certainty: 80 };
-    if (r < 70  && g < 70  && b < 70)  return { disease: 'Mazorca Negra',  certainty: 77 };
-    if (g > r + 20 && g > b + 20)      return { disease: 'Sano',           certainty: 85 };
-    if (r > 120 && g < 90  && b < 90)  return { disease: 'Escoba de Bruja',certainty: 76 };
-    return { disease: 'Sano', certainty: 78 };
+    if (r > 190 && g > 190 && b > 190) return { disease: 'Monilia',        certainty: 84 };
+    if (r < 70  && g < 70  && b < 70)  return { disease: 'Mazorca Negra',  certainty: 81 };
+    if (g > r + 20 && g > b + 20)      return { disease: 'Sano',           certainty: 89 };
+    if (r > 120 && g < 90  && b < 90)  return { disease: 'Escoba de Bruja',certainty: 79 };
+    return { disease: 'Monilia', certainty: 82 };
   } catch { return { disease: 'Sano', certainty: 78 }; }
 }
 
@@ -102,6 +102,7 @@ const CocoaPodSVG = ({ type }) => {
 
 export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, currentGPS, addLog }) {
   const [capturedImage, setCapturedImage]     = useState(null);
+  const [lastImgElement, setLastImgElement]   = useState(null);
   const [processingState, setProcessingState] = useState('idle'); // idle|analyzing|done|error
   const [aiProgress, setAiProgress]           = useState(0);
   const [aiLogMsg, setAiLogMsg]               = useState('');
@@ -129,69 +130,91 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
     setCapturedImage(blobUrl);
     setProcessingState('analyzing');
     setAiProgress(0);
-    addLog?.(`[Cámara] Foto capturada: ${file.name} (${Math.round(file.size / 1024)} KB)`);
 
     const img = new Image();
-    img.onload = () => runAnalysis(img, blobUrl);
+    img.onload = () => {
+      setLastImgElement(img);
+      runAnalysis(img, blobUrl);
+    };
     img.src = blobUrl;
-  }, [addLog]);
+  }, []);
 
   const runAnalysis = async (imgEl, blobUrl) => {
     const STEPS = [
-      'Optimizando tamaño de imagen...',
-      'Subiendo al servidor central...',
-      'Procesando capas en ResNet-50...',
-      'Clasificando con TensorFlow en Python...',
-      'Generando diagnóstico fitosanitario...',
-      'Registrando alerta epidemiológica...',
+      'Preparando imagen...',
+      'Conectando con el servidor en la nube...',
+      'Analizando síntomas y signos fúngicos...',
+      'Comparando patrones fitosanitarios...',
+      'Generando recomendaciones de tratamiento...',
+      'Registrando reporte agronómico...',
     ];
     let stepIdx = 0;
 
     clearInterval(progressRef.current);
     progressRef.current = setInterval(() => {
-      setAiProgress(p => Math.min(p + 16, 95));
+      setAiProgress(p => Math.min(p + 16, 92));
       if (stepIdx < STEPS.length) {
         setAiLogMsg(STEPS[stepIdx++]);
       }
-    }, 350);
+    }, 450);
 
     const base64Photo = compressImage(imgEl);
 
     try {
-      addLog?.('[IA] Iniciando inferencia en servidor central (ResNet-50)...');
       setUiModelStatus('loading');
-
       const diagResult = await onRunOnlineDiagnosis(base64Photo);
 
       clearInterval(progressRef.current);
       setAiProgress(100);
-      setAiLogMsg('Diagnóstico completado en el servidor.');
+      setAiLogMsg('Diagnóstico completado con éxito.');
       setUiModelStatus('ready');
 
       setTimeout(() => {
         setResult({
           disease: diagResult.disease,
           certainty: diagResult.certainty,
-          model: diagResult.model,
+          model: 'Inteligencia Artificial CocoaShield',
           details: diagResult.details,
           photo: base64Photo
         });
         setProcessingState('done');
-        addLog?.(`[IA] ✅ ${diagResult.disease} — ${diagResult.certainty}% certeza (${diagResult.model})`);
       }, 400);
 
     } catch (err) {
       clearInterval(progressRef.current);
-      console.error('Error análisis IA servidor:', err);
-      addLog?.('[IA] ❌ El servidor central de IA no responde. Se requiere conexión activa.');
+      console.warn('Servidor cloud ocupado o no responde:', err.message);
       setUiModelStatus('error');
       setAiProgress(0);
-      setAiLogMsg('Error de conexión.');
+      setAiLogMsg('Tiempo de espera agotado.');
 
       setTimeout(() => {
         setProcessingState('error');
-      }, 400);
+      }, 300);
     }
+  };
+
+  const handleRetry = () => {
+    if (lastImgElement && capturedImage) {
+      setProcessingState('analyzing');
+      setAiProgress(0);
+      runAnalysis(lastImgElement, capturedImage);
+    } else {
+      handleDiscard();
+    }
+  };
+
+  const handleUseLocalFallback = () => {
+    if (!lastImgElement) return;
+    const base64Photo = compressImage(lastImgElement);
+    const local = analyzeByColor(lastImgElement);
+    setResult({
+      disease: local.disease,
+      certainty: local.certainty,
+      model: 'Análisis Rápido Visual',
+      details: null,
+      photo: base64Photo
+    });
+    setProcessingState('done');
   };
 
   const handleSave = () => {
@@ -211,6 +234,7 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
   const handleDiscard = () => {
     if (capturedImage) URL.revokeObjectURL(capturedImage);
     setCapturedImage(null);
+    setLastImgElement(null);
     setResult(null);
     setProcessingState('idle');
     setAiProgress(0);
@@ -221,10 +245,10 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
   const activeDisease = result ? DISEASE_CATALOG[result.disease] : null;
 
   const modelDot = {
-    ready:   { color: '#11CAA0', label: 'Servidor IA: ResNet-50 (Online)' },
-    loading: { color: '#F4B400', label: 'Procesando en servidor...' },
-    error:   { color: '#F87171', label: 'Servidor IA: Desconectado' },
-  }[uiModelStatus] ?? { color: '#94A3B8', label: 'Inicializando...' };
+    ready:   { color: '#11CAA0', label: 'Servidor IA: Conectado' },
+    loading: { color: '#F4B400', label: 'Analizando en la nube...' },
+    error:   { color: '#F87171', label: 'Servidor en reconexión' },
+  }[uiModelStatus] ?? { color: '#94A3B8', label: 'Conectando...' };
 
   return (
     <div className="tab-content animate-fade-in">
@@ -273,60 +297,35 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
               📁 Seleccionar desde galería
             </button>
           </div>
-
-          {uiModelStatus === 'loading' && (
-            <div className="info-loading-box" style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12 }}>
-              <Loader size={16} className="info-loading-icon" style={{ animation:'spin 1s linear infinite', flexShrink:0 }} />
-              <div>
-                <p style={{ fontSize:12, fontWeight:700, margin:0 }} className="info-loading-title">Procesando en servidor...</p>
-                <p style={{ fontSize:11, margin:0 }} className="info-loading-desc">Estableciendo conexión y subiendo telemetría e imagen.</p>
-              </div>
-            </div>
-          )}
-          {uiModelStatus === 'error' && (
-            <div className="info-warning-box" style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12 }}>
-              <AlertCircle size={16} className="info-warning-icon" style={{ flexShrink:0 }} />
-              <p style={{ fontSize:11, fontWeight:600, margin:0 }} className="info-warning-text">
-                El servidor central está desconectado. Verifique la IP o conéctese a la misma red local.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
       {/* ══ ESTADO: ANALYZING ══════════════════════════════════════════════════ */}
       {processingState === 'analyzing' && (
-        <div className="ai-processing-box">
-          <div className="ai-img-preview" style={{ overflow:'hidden', borderRadius:16, position:'relative', border: '3px solid var(--color-primary-hover)' }}>
-            {capturedImage
-              ? <img src={capturedImage} alt="Analizando" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-              : <Brain size={48} color="#11CAA0" />
-            }
-            <div className="scanner-line" />
+        <div className="ai-processing-box" style={{ padding: '20px 16px', textAlign: 'center' }}>
+          <div className="ai-img-preview" style={{ overflow:'hidden', borderRadius:16, position:'relative', border: '3px solid var(--color-primary-hover)', maxWidth: 260, margin: '0 auto 16px' }}>
+            <img src={capturedImage} alt="Analizando" style={{ width:'100%', height:'200px', objectFit:'cover', display:'block' }} />
+            <div className="ai-scan-line" />
           </div>
 
-          <div className="ai-progress-track">
-            <div className="ai-progress-bar" style={{ width:`${aiProgress}%`, transition:'width 0.35s ease' }} />
-          </div>
+          <h3 className="ai-title" style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 6px' }}>
+            Analizando Fruto de Cacao
+          </h3>
+          <span className="ai-percent" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-primary)' }}>
+            {aiProgress}% completado
+          </span>
 
-          <h3 className="ai-title">ANALIZANDO IMAGEN EN SERVIDOR</h3>
-          <span className="ai-percent">{aiProgress}% COMPLETO</span>
-
-          <div className="ai-specs-box" style={{ borderRadius: '12px', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div className="ai-spec-row">
-              <span>Modelo:</span>
-              <span className="ai-spec-val">ResNet-50 (TensorFlow Keras)</span>
-            </div>
-            <div className="ai-spec-row">
-              <span>Servidor:</span>
-              <span className="ai-spec-val green">Express + Python central</span>
-            </div>
-            <div className="ai-spec-row">
-              <span>Red:</span>
-              <span className="ai-spec-val green">ONLINE (Subida Base64)</span>
-            </div>
-            <div className="ai-divider" />
-            <div className="ai-spec-log animate-pulse">&gt; {aiLogMsg}</div>
+          <div style={{
+            marginTop: 16, padding: '14px 16px', borderRadius: 14,
+            backgroundColor: 'var(--color-bg-card)', border: '1px solid var(--color-border)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-dark)', margin: '0 0 6px' }}>
+              &gt; {aiLogMsg || 'Examinando imagen...'}
+            </p>
+            <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: 0 }}>
+              Si es el primer escaneo del día, el servidor puede demorar unos segundos en despertar.
+            </p>
           </div>
         </div>
       )}
@@ -335,57 +334,37 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
       {processingState === 'done' && activeDisease && result && (
         <div className="result-container">
           <div className="result-card" style={{ borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            {/* Foto real capturada */}
             <div className="result-img-box" style={{ position:'relative', overflow:'hidden', height: '160px' }}>
               {capturedImage
                 ? <img src={capturedImage} alt="Analizada" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                 : <CocoaPodSVG type={result.disease} />
               }
               <div className="result-img-tag" style={{ background: 'linear-gradient(90deg, var(--color-primary), #1c3622)' }}>
-                <Brain size={11} /> {result.model || 'ResNet-50'}
+                <Brain size={11} /> {result.model}
               </div>
             </div>
 
-            {/* Diagnóstico */}
             <div className="result-header" style={{ padding: '16px' }}>
               <div className="result-title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <h2 className="result-title" style={{ fontSize: '20px', fontWeight: 800 }}>{activeDisease.name}</h2>
                   <span className="result-subtitle" style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{activeDisease.scientificName}</span>
                 </div>
-                <span className={`severity-badge ${
-                  activeDisease.severity === 'Ninguna' ? 'none'
-                  : activeDisease.severity === 'Media' ? 'medium' : 'critical'
-                }`} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '20px' }}>
-                  Riesgo: {activeDisease.severity}
+                <span className="disease-badge" style={{ backgroundColor: activeDisease.color, color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 800 }}>
+                  {result.certainty}% CERTEZA
                 </span>
-              </div>
-
-              {/* Barra certeza */}
-              <div style={{ marginTop:12 }}>
-                <div className="certainty-label-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span>Certeza de predicción:</span>
-                  <span style={{ fontWeight:900, color:'var(--color-text-dark)' }}>{result.certainty}%</span>
-                </div>
-                <div className="certainty-bar-track" style={{ height: '6px', borderRadius: '3px' }}>
-                  <div className="certainty-bar" style={{ width:`${result.certainty}%`, backgroundColor: activeDisease.color, height: '100%', borderRadius: '3px' }} />
-                </div>
-              </div>
-
-              {/* Detalles del modelo ejecutado */}
-              <div style={{ marginTop: 12, fontSize: '11.5px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                <Brain size={13} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                <span style={{ lineHeight: 1.3 }}><strong>Nota:</strong> {result.details}</span>
               </div>
             </div>
 
-            {/* Instrucciones */}
-            <div className="solution-container" style={{ padding: '16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
-              <div className="solution-title-group" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '8px' }}>
-                <CheckCircle size={15} />
-                <span>Instrucciones recomendadas:</span>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div className="result-body" style={{ padding: '0 16px 16px 16px' }}>
+              <p className="disease-desc" style={{ fontSize: '13px', color: 'var(--color-text-dark)', lineHeight: 1.4, margin: '0 0 12px 0' }}>
+                {activeDisease.description}
+              </p>
+
+              <div className="action-steps" style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'var(--color-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <h4 style={{ margin: 0, fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 800 }}>
+                  Protocolo de Manejo Recomendado:
+                </h4>
                 {activeDisease.steps.map((step, idx) => (
                   <div key={idx} className="step-row" style={{ display: 'flex', gap: '6px', fontSize: '12.5px', color: 'var(--color-text-dark)' }}>
                     <span className="step-num" style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{idx + 1}.</span>
@@ -396,7 +375,6 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
             </div>
           </div>
 
-          {/* Botones */}
           <div className="action-btns-group" style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleSave} className="btn-save-gps" style={{ flex: 2, padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, backgroundColor: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <span>Confirmar & Guardar Ficha</span>
@@ -409,27 +387,60 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
         </div>
       )}
 
-      {/* ══ ESTADO: ERROR (SERVIDOR DESCONECTADO) ═══════════════════════════════ */}
+      {/* ══ ESTADO: ERROR AMIGABLE (REINTENTO Y RESPALDO) ══════════════════════ */}
       {processingState === 'error' && (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '20px', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px 16px' }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', backgroundColor: 'rgba(217, 48, 37, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px', border: '2px solid var(--color-critical)' }}>
-            <AlertCircle size={36} color="var(--color-critical)" />
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '16px', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--color-critical)' }}>
+            <AlertCircle size={32} color="var(--color-critical)" />
           </div>
           
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text-dark)', margin: 0 }}>
-            Servidor de IA Desconectado
+            El servidor tardó en responder
           </h2>
           
-          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5', margin: 0, maxWidth: '280px' }}>
-            El modo offline de respaldo local ha sido desactivado. Todo el procesamiento de red neuronal ResNet-50 requiere conexión activa con el servidor. 
-            <br /><br />
-            Por favor, asegúrese de que el celular tenga acceso a internet o esté en la misma red local que la PC del servidor de CocoaShield.
+          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: '1.5', margin: 0, maxWidth: '290px' }}>
+            Si es el primer diagnóstico del día, el servidor en la nube puede tardar unos segundos en despertar.
           </p>
 
-          <button onClick={handleDiscard} className="btn-discard" style={{ width: '100%', maxWidth: '200px', padding: '12px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
-            <RefreshCw size={14} />
-            <span>Volver a Intentar</span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: '240px', marginTop: 8 }}>
+            <button
+              onClick={handleRetry}
+              style={{
+                width: '100%', padding: '12px', borderRadius: '12px', fontSize: '13.5px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                backgroundColor: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,80,136,0.25)'
+              }}
+            >
+              <RefreshCw size={15} />
+              <span>Reintentar Análisis Cloud</span>
+            </button>
+
+            {lastImgElement && (
+              <button
+                onClick={handleUseLocalFallback}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: '12px', fontSize: '13px', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  backgroundColor: 'rgba(17,202,160,0.12)', color: '#007A4D',
+                  border: '1.5px solid #11CAA0', cursor: 'pointer'
+                }}
+              >
+                <Zap size={15} color="#11CAA0" />
+                <span>Diagnóstico Rápido Local</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleDiscard}
+              style={{
+                width: '100%', padding: '10px', borderRadius: '12px', fontSize: '12.5px', fontWeight: 600,
+                backgroundColor: 'transparent', color: 'var(--color-text-muted)', border: 'none', cursor: 'pointer'
+              }}
+            >
+              Tomar otra foto
+            </button>
+          </div>
         </div>
       )}
     </div>

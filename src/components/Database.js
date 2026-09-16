@@ -89,20 +89,42 @@ export const getHistory = async () => {
 /**
  * Ejecuta el diagnóstico de Inteligencia Artificial en la nube.
  */
-export const runOnlineDiagnosis = async (imageBase64, locationObj) => {
+export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName, gpsObj) => {
+  let locationName = 'Finca Cacaotera';
+  let lat = -1.0234;
+  let lng = -77.5432;
+  let farmer = farmerName || localStorage.getItem('cocoashield_farmer_name') || 'Trabajador de Campo';
+
+  if (typeof farmOrLocation === 'string' && farmOrLocation.trim()) {
+    locationName = farmOrLocation;
+  } else if (farmOrLocation && typeof farmOrLocation === 'object') {
+    locationName = farmOrLocation.name || locationName;
+    if (farmOrLocation.lat) lat = farmOrLocation.lat;
+    if (farmOrLocation.lng) lng = farmOrLocation.lng;
+  }
+
+  if (gpsObj && typeof gpsObj === 'object') {
+    if (gpsObj.lat) lat = gpsObj.lat;
+    if (gpsObj.lng) lng = gpsObj.lng;
+    if (locationName === 'Finca Cacaotera' && gpsObj.name) {
+      locationName = gpsObj.name;
+    }
+  }
+
   const payload = {
     image: imageBase64,
-    location: locationObj?.name || 'Finca Cacaotera',
+    location: locationName,
     region: 'Napo',
-    farmer: localStorage.getItem('cocoashield_farmer_name') || 'Productor Cacaotero',
-    lat: locationObj?.lat || -1.0234,
-    lng: locationObj?.lng || -77.5432
+    farmer: farmer,
+    lat: lat,
+    lng: lng
   };
 
   const response = await fetch(`${BACKEND_URL}/api/predict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(45000) // 45s para tolerar arranques en frío de Render
   });
 
   if (!response.ok) {
