@@ -4,7 +4,7 @@ import DiagnosisTab from "./components/DiagnosisTab";
 import HistoryTab from "./components/HistoryTab";
 import { getHistory, saveDiagnosis, BACKEND_URL, runOnlineDiagnosis } from "./components/Database";
 import AutoUpdateBanner from "./components/AutoUpdateBanner";
-import { User, Settings, Compass, Lock, Eye, EyeOff, LogOut, Shield, AlertTriangle } from "lucide-react";
+import { User, Settings, Compass, Lock, Eye, EyeOff, LogOut, Shield, AlertTriangle, Sparkles } from "lucide-react";
 
 const isMobileDevice = () => window.innerWidth <= 768;
 
@@ -573,6 +573,9 @@ export default function App() {
 function ConfigTab({ currentUser, onLogout, farmerName, setFarmerName, farmName, setFarmName, isDarkMode, setIsDarkMode, currentGPS, fetchRealGPS, backendStatus }) {
   const initials = farmerName.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   const role = currentUser?.role || "Trabajador de Campo";
+  const [geminiKey, setGeminiKey] = useState(
+    () => localStorage.getItem("cocoashield_gemini_key") || ""
+  );
 
   return (
     <div className="tab-content animate-fade-in" style={{
@@ -657,6 +660,25 @@ function ConfigTab({ currentUser, onLogout, farmerName, setFarmerName, farmName,
         >
           <Compass size={14} /> Actualizar mi ubicacion
         </button>
+      </CsCard>
+
+      {/* Motor de Inteligencia Artificial */}
+      <CsCard icon={<Sparkles size={15} color="#11CAA0" />} title="Motor de Inteligencia Artificial">
+        <CsField label="Google Gemini API Key (Opcional - Máxima Precisión)">
+          <input
+            type="password"
+            value={geminiKey}
+            onChange={(e) => {
+              setGeminiKey(e.target.value);
+              localStorage.setItem("cocoashield_gemini_key", e.target.value.trim());
+            }}
+            style={inputStyle}
+            placeholder="Pega tu clave gratuita de Google AI Studio"
+          />
+        </CsField>
+        <p style={{ fontSize: 11, color: "var(--color-text-muted)", margin: "2px 0 0", lineHeight: 1.45 }}>
+          Por defecto se usa el <strong>Motor Botánico CocoaShield v2.0</strong> (automático y gratis). Si deseas razonamiento multimodal avanzado de Google, puedes ingresar tu clave gratuita de <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" style={{ color: "#11CAA0", fontWeight: 700 }}>aistudio.google.com</a>.
+        </p>
       </CsCard>
 
       {/* Apariencia */}

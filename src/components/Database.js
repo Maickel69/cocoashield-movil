@@ -117,7 +117,8 @@ export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName
     region: 'Napo',
     farmer: farmer,
     lat: lat,
-    lng: lng
+    lng: lng,
+    geminiKey: localStorage.getItem('cocoashield_gemini_key') || undefined
   };
 
   const response = await fetch(`${BACKEND_URL}/api/predict`, {
