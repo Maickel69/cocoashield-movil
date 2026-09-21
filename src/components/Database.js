@@ -78,7 +78,12 @@ export const getHistory = async () => {
       locationName: c.location || 'Finca Cacaotera',
       farmer: c.farmer || 'Técnico Agrónomo',
       severity: c.severity || 'Media',
-      image: c.image
+      photo: c.image || c.photo || null,
+      image: c.image || c.photo || null,
+      lat: c.lat,
+      lng: c.lng,
+      prescription: c.prescription || '',
+      status: c.status || 'Crítico'
     }));
   } catch (error) {
     console.error('[Cloud DB] Error consultando historial:', error);
@@ -148,10 +153,15 @@ export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName
  */
 export const saveDiagnosis = async (record) => {
   try {
+    const payload = {
+      ...record,
+      image: record.photo || record.image,
+      photo: record.photo || record.image
+    };
     const response = await fetch(`${BACKEND_URL}/api/cases`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record)
+      body: JSON.stringify(payload)
     });
     return response.ok;
   } catch (err) {
