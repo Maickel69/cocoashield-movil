@@ -279,23 +279,127 @@ export default function DiagnosisTab({ onSaveDiagnosis, onRunOnlineDiagnosis, cu
 
       {/* ══ ESTADO: IDLE ═══════════════════════════════════════════════════════ */}
       {processingState === 'idle' && (
-        <div style={{ display:'flex', flexDirection:'column', flex:1, gap:'12px' }}>
-          <div className="camera-box" style={{ border: '2px dashed var(--color-primary-hover)', backgroundColor: 'var(--color-bg)' }}>
-            <div style={{ width:84, height:84, borderRadius:'50%', backgroundColor:'var(--color-accent)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
-              <Camera size={38} strokeWidth={2} color="var(--color-primary)" />
+        <div style={{ display:'flex', flexDirection:'column', flex:1, gap:'14px' }}>
+          <div
+            className="camera-box-v2"
+            style={{
+              position: 'relative',
+              borderRadius: '24px',
+              background: 'linear-gradient(180deg, #16281E 0%, #0D1A13 100%)',
+              border: '1.5px solid rgba(17, 202, 160, 0.25)',
+              boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
+              padding: '28px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              minHeight: '340px'
+            }}
+          >
+            {/* Esquinas holográficas del visor */}
+            <div style={{ position: 'absolute', top: 16, left: 16, width: 22, height: 22, borderTop: '3px solid #11CAA0', borderLeft: '3px solid #11CAA0', borderTopLeftRadius: 6 }} />
+            <div style={{ position: 'absolute', top: 16, right: 16, width: 22, height: 22, borderTop: '3px solid #11CAA0', borderRight: '3px solid #11CAA0', borderTopRightRadius: 6 }} />
+            <div style={{ position: 'absolute', bottom: 16, left: 16, width: 22, height: 22, borderBottom: '3px solid #11CAA0', borderLeft: '3px solid #11CAA0', borderBottomLeftRadius: 6 }} />
+            <div style={{ position: 'absolute', bottom: 16, right: 16, width: 22, height: 22, borderBottom: '3px solid #11CAA0', borderRight: '3px solid #11CAA0', borderBottomRightRadius: 6 }} />
+
+            {/* Badge superior del visor */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 12px',
+              borderRadius: 20,
+              background: 'rgba(17, 202, 160, 0.12)',
+              border: '1px solid rgba(17, 202, 160, 0.3)',
+              color: '#11CAA0',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              marginBottom: 20
+            }}>
+              <Zap size={12} />
+              <span>Visor IA Activo</span>
             </div>
 
-            <button onClick={handleOpenCamera} className="camera-btn-giant animate-pulse-glow" style={{ borderRadius: '12px', background: 'linear-gradient(135deg, var(--color-primary), #1b3823)' }}>
-              <Camera size={20} />
-              <span>Tomar Foto al Fruto/Hoja</span>
+            {/* Centro de mira / Retícula */}
+            <div style={{
+              width: 88,
+              height: 88,
+              borderRadius: '50%',
+              border: '2px dashed rgba(17, 202, 160, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 20,
+              position: 'relative'
+            }}>
+              <div style={{
+                width: 68,
+                height: 68,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(17,202,160,0.2), rgba(0,80,136,0.25))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Camera size={34} color="#11CAA0" />
+              </div>
+            </div>
+
+            {/* Botón Gigante de Captura con Anillo Luminoso */}
+            <button
+              onClick={handleOpenCamera}
+              style={{
+                width: '100%',
+                maxWidth: 280,
+                padding: '14px 20px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #11CAA0, #0B9E7B)',
+                color: '#0A1A12',
+                fontSize: '15px',
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: '0 6px 20px rgba(17, 202, 160, 0.4)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <Camera size={20} strokeWidth={2.5} />
+              <span>Capturar Mazorca</span>
             </button>
 
+            {/* Botón de galería secundario */}
             <button
               onClick={handleOpenGallery}
-              style={{ marginTop:12, background:'none', border:'none', cursor:'pointer', color:'var(--color-text-muted)', fontSize:'13px', display:'flex', alignItems:'center', gap:'6px', padding:'4px 8px', fontWeight: '700' }}
+              style={{
+                marginTop: 14,
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                color: '#E2E8F0',
+                fontSize: '12.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 18px',
+                fontWeight: '700'
+              }}
             >
-              📁 Seleccionar desde galería
+              <span>📁 Cargar desde Galería</span>
             </button>
+
+            <p style={{ margin: '14px 0 0', fontSize: '11px', color: '#88A393', textAlign: 'center' }}>
+              Encuadra el fruto a 20-30 cm de distancia para máxima precisión.
+            </p>
           </div>
         </div>
       )}
