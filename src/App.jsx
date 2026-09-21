@@ -377,7 +377,7 @@ export default function App() {
 
   const checkBackend = useCallback(async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/cases`, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(`${BACKEND_URL}/api/cases`, { signal: AbortSignal.timeout(15000) });
       setBackendStatus(res.ok ? "online" : "offline");
     } catch {
       setBackendStatus("offline");
