@@ -63,32 +63,44 @@ export const DISEASE_CATALOG = {
 };
 
 /**
- * Obtiene el historial de casos directamente desde la API Cloud en Supabase / Backend.
+ * Obtiene el historial de casos directamente desde la API Cloud en Supabase / Backend, con respaldo local offline.
  */
 export const getHistory = async () => {
+  let localCases = [];
   try {
-    const response = await fetch(`${BACKEND_URL}/api/cases`);
-    if (!response.ok) throw new Error('Error de conexión con el backend en la nube');
-    const cases = await response.json();
-    return cases.map(c => ({
-      id: c.id,
-      disease: c.diagnosis || c.disease,
-      certainty: c.confidence || c.certainty,
-      date: c.date || c.created_at || new Date().toISOString(),
-      locationName: c.location || 'Finca Cacaotera',
-      farmer: c.farmer || 'Técnico Agrónomo',
-      severity: c.severity || 'Media',
-      photo: c.image || c.photo || null,
-      image: c.image || c.photo || null,
-      lat: c.lat,
-      lng: c.lng,
-      prescription: c.prescription || '',
-      status: c.status || 'Crítico'
-    }));
+    const raw = localStorage.getItem('cocoashield_local_cases');
+    if (raw) localCases = JSON.parse(raw);
+  } catch {}
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/cases`, { signal: AbortSignal.timeout(15000) });
+    if (response.ok) {
+      const serverCases = await response.json();
+      if (Array.isArray(serverCases) && serverCases.length > 0) {
+        const mapped = serverCases.map(c => ({
+          id: c.id,
+          disease: c.diagnosis || c.disease,
+          certainty: c.confidence || c.certainty,
+          date: c.date || c.created_at || new Date().toISOString(),
+          locationName: c.location || 'Finca Cacaotera',
+          farmer: c.farmer || 'Técnico Agrónomo',
+          severity: c.severity || 'Media',
+          photo: c.image || c.photo || null,
+          image: c.image || c.photo || null,
+          lat: c.lat,
+          lng: c.lng,
+          prescription: c.prescription || '',
+          status: c.status || 'Crítico'
+        }));
+        const serverIds = new Set(mapped.map(x => x.id));
+        const merged = [...localCases.filter(x => !serverIds.has(x.id)), ...mapped];
+        return merged;
+      }
+    }
   } catch (error) {
-    console.error('[Cloud DB] Error consultando historial:', error);
-    return [];
+    console.error('[Cloud DB] Error consultando historial remoto:', error);
   }
+  return localCases;
 };
 
 /**
@@ -149,15 +161,27 @@ export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName
 };
 
 /**
- * Guarda un diagnóstico en el servidor de la nube.
+ * Guarda un diagnóstico en el servidor de la nube con respaldo local inmediato.
  */
 export const saveDiagnosis = async (record) => {
+  const payload = {
+    ...record,
+    image: record.photo || record.image,
+    photo: record.photo || record.image
+  };
+
+  // Respaldo local inmediato
   try {
-    const payload = {
-      ...record,
-      image: record.photo || record.image,
-      photo: record.photo || record.image
-    };
+    const raw = localStorage.getItem('cocoashield_local_cases');
+    const existing = raw ? JSON.parse(raw) : [];
+    const updated = [payload, ...existing.filter(x => x.id !== payload.id)];
+    localStorage.setItem('cocoashield_local_cases', JSON.stringify(updated.slice(0, 50)));
+  } catch (e) {
+    console.warn('[Local Storage] No se pudo cachear:', e);
+  }
+
+  // Guardar en la nube
+  try {
     const response = await fetch(`${BACKEND_URL}/api/cases`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
