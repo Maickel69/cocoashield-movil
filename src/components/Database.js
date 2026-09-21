@@ -125,7 +125,7 @@ export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(45000) // 45s para tolerar arranques en frío de Render
+    signal: AbortSignal.timeout(90000) // 90s para tolerar arranques en frío de Render sin fallar
   });
 
   if (!response.ok) {
