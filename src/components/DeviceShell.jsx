@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, History, Wifi, Compass, Settings } from 'lucide-react';
+import React from 'react';
+import { IconCamera, IconHistory, IconSettings } from '@tabler/icons-react';
+import './DeviceShell.css';
 
 export default function DeviceShell({
   isOnline,
@@ -9,90 +10,65 @@ export default function DeviceShell({
   children,
   unsyncedCount
 }) {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  };
-
   return (
     <div className="phone-wrapper">
-      {/* Dynamic Status Bar */}
-      <div className="status-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span>{formatTime(time)}</span>
-          <span style={{ opacity: 0.3 }}>|</span>
-          <span style={{ color: '#A7C5B0', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px' }}>
-            <Compass size={11} /> GPS: ON
-          </span>
-        </div>
-
-        {/* Dynamic Signal/Network Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {isOnline ? (
-              <>
-                <Wifi size={13} style={{ color: '#4ade80' }} />
-                <span style={{ fontSize: '9px', color: '#A7C5B0' }}>4G</span>
-              </>
-            ) : (
-              <Wifi size={13} style={{ color: '#94a3b8' }} />
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Screen Area (Active Tab) */}
       <div className="screen-container">
         <div className="screen-content">
           {children}
         </div>
 
-        {/* Bottom Navigation Bar */}
+        {/* Bottom Navigation Bar - Floating Island Style */}
         <div className="bottom-nav">
-          <button
-            onClick={() => setActiveTab('diagnostico')}
-            className={`nav-button ${activeTab === 'diagnostico' ? 'active' : ''}`}
-          >
-            <Camera size={22} />
-            <span>Diagnóstico</span>
-          </button>
+          <div className="floating-nav-island">
+            <button
+              onClick={() => setActiveTab('diagnostico')}
+              className={`nav-button ${activeTab === 'diagnostico' ? 'active' : ''}`}
+            >
+              <IconCamera size={20} stroke={1.8} />
+              <span>Diagnóstico</span>
+            </button>
 
-          {/* Ocultado por solicitud del cliente: módulo de mapas desactivado
-          <button
-            onClick={() => setActiveTab('mapa')}
-            className={`nav-button ${activeTab === 'mapa' ? 'active' : ''}`}
-          >
-            <Map size={22} />
-            <span>Mapa Alertas</span>
-          </button>
-          */}
+            <button
+              onClick={() => setActiveTab('historial')}
+              className={`nav-button ${activeTab === 'historial' ? 'active' : ''}`}
+              style={{ position: 'relative' }}
+            >
+              <IconHistory size={20} stroke={1.8} />
+              <span>Historial</span>
+              {unsyncedCount > 0 && (
+                <span className="nav-badge">
+                  {unsyncedCount}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab('historial')}
-            className={`nav-button ${activeTab === 'historial' ? 'active' : ''}`}
-            style={{ position: 'relative' }}
-          >
-            <History size={22} />
-            <span>Historial</span>
-            {unsyncedCount > 0 && (
-              <span className="nav-badge">
-                {unsyncedCount}
-              </span>
-            )}
-          </button>
+            <button
+              onClick={() => setActiveTab('configuracion')}
+              className={`nav-button ${activeTab === 'configuracion' ? 'active' : ''}`}
+            >
+              <IconSettings size={20} stroke={1.8} />
+              <span>Mi Cuenta</span>
+            </button>
+          </div>
 
+          {/* Botón Circular de Acción Principal en la Esquina (Cámara / Captura) */}
           <button
-            onClick={() => setActiveTab('configuracion')}
-            className={`nav-button ${activeTab === 'configuracion' ? 'active' : ''}`}
+            type="button"
+            onClick={() => {
+              setActiveTab('diagnostico');
+              // Disparar click en input si existe en el DOM
+              setTimeout(() => {
+                const fileInputs = document.querySelectorAll('input[type="file"]');
+                if (fileInputs && fileInputs.length > 0) {
+                  fileInputs[0].click();
+                }
+              }, 50);
+            }}
+            className="floating-action-fab"
+            title="Tomar Foto / Analizar Mazorca"
           >
-            <Settings size={22} />
-            <span>Mi Cuenta</span>
+            <IconCamera size={26} stroke={2} />
           </button>
         </div>
       </div>

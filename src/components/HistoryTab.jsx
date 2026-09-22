@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { MapPin, Calendar, User, ShieldAlert, CheckCircle2, ChevronRight, X, ExternalLink, Filter, Sparkles } from 'lucide-react';
+import {
+  IconMapPin,
+  IconCalendar,
+  IconUser,
+  IconShieldExclamation,
+  IconCircleCheck,
+  IconChevronRight,
+  IconX,
+  IconExternalLink,
+  IconFilter,
+  IconSparkles,
+  IconPlant2,
+  IconInfoCircle
+} from '@tabler/icons-react';
 import { DISEASE_CATALOG } from './Database';
 
 // Offline SVGs for thumbnails in history list when image is missing
@@ -42,9 +55,39 @@ const HistoryMiniSVG = ({ type }) => {
   }
 };
 
-export default function HistoryTab({ history = [], isOnline, onSyncNow, unsyncedCount }) {
-  const [selectedRecord, setSelectedRecord] = useState(null);
+export default function HistoryTab({
+  history = [],
+  isOnline,
+  onSyncNow,
+  unsyncedCount,
+  onDetailOpen,
+  selectedRecord: externalSelectedRecord,
+  onSelectRecord: externalOnSelectRecord
+}) {
+  const [internalSelectedRecord, setInternalSelectedRecord] = useState(null);
+  const [showProtocolDialog, setShowProtocolDialog] = useState(false);
   const [filterType, setFilterType] = useState('Todos');
+
+  const selectedRecord = externalSelectedRecord !== undefined ? externalSelectedRecord : internalSelectedRecord;
+
+  const handleOpenDetail = (record) => {
+    if (externalOnSelectRecord) {
+      externalOnSelectRecord(record);
+    } else {
+      setInternalSelectedRecord(record);
+      onDetailOpen?.(true);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    if (externalOnSelectRecord) {
+      externalOnSelectRecord(null);
+    } else {
+      setInternalSelectedRecord(null);
+      setShowProtocolDialog(false);
+      onDetailOpen?.(false);
+    }
+  };
 
   const formatDate = (isoString) => {
     if (!isoString) return '';
@@ -78,21 +121,9 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
   };
 
   return (
-    <div className="tab-content animate-fade-in" style={{ paddingBottom: 90 }}>
-      {/* Header */}
-      <div className="hist-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div>
-          <h1 className="tab-title" style={{ fontSize: 22, fontWeight: 900, margin: 0, color: 'var(--color-text-dark)' }}>
-            Mi Historial
-          </h1>
-          <p className="tab-subtitle" style={{ fontSize: 12, margin: '2px 0 0', color: 'var(--color-text-muted)' }}>
-            Fichas fitosanitarias de campo ({history.length} escaneos)
-          </p>
-        </div>
-      </div>
-
+    <div className="tab-content animate-fade-in" style={{ paddingBottom: 20 }}>
       {/* Filter Chips Bar */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 12, scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 8, scrollbarWidth: 'none' }}>
         {['Todos', 'Monilia', 'Mazorca Negra', 'Escoba de Bruja', 'Sano'].map(f => {
           const active = filterType === f;
           return (
@@ -100,9 +131,9 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
               key={f}
               onClick={() => setFilterType(f)}
               style={{
-                padding: '6px 12px',
+                padding: '6px 14px',
                 borderRadius: 20,
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 backgroundColor: active ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.05)',
@@ -119,10 +150,10 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
       </div>
 
       {/* History Cards List */}
-      <div className="hist-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="hist-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filteredHistory.length === 0 ? (
-          <div className="hist-empty" style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, border: '1px dashed var(--color-border)' }}>
-            <span style={{ fontSize: 40, display: 'block', marginBottom: 10 }}>🌿</span>
+          <div className="hist-empty" style={{ textAlign: 'center', padding: '36px 16px', borderRadius: 16, border: '1px dashed var(--color-border)' }}>
+            <IconPlant2 size={40} stroke={1.5} color="var(--color-primary)" style={{ margin: '0 auto 10px', display: 'block' }} />
             <h3 className="hist-empty-title" style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: 'var(--color-text-dark)' }}>
               {filterType === 'Todos' ? 'Sin registros aún' : `Sin registros de ${filterType}`}
             </h3>
@@ -134,24 +165,25 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
           filteredHistory.map((record) => {
             const diseaseDetails = DISEASE_CATALOG[record.disease] || DISEASE_CATALOG['Sano'];
             const photoUrl = record.photo || record.image;
-            const badge = getBadgeStyle(record.disease);
-
             return (
               <div
                 key={record.id}
-                onClick={() => setSelectedRecord(record)}
+                onClick={() => handleOpenDetail(record)}
                 className="hist-card"
                 style={{
                   cursor: 'pointer',
-                  borderRadius: 16,
-                  padding: 12,
+                  borderRadius: 14,
+                  padding: '10px 12px',
                   display: 'flex',
                   gap: 12,
                   alignItems: 'center',
-                  border: '1.5px solid var(--color-border)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.15s ease, border-color 0.15s ease'
+                  backgroundColor: 'var(--color-bg-card)',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'none',
+                  transition: 'background-color 0.15s ease, transform 0.1s ease'
                 }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.99)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
                 {/* Photo Thumbnail */}
                 <div
@@ -199,7 +231,7 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                     <h4 style={{ fontSize: 14, fontWeight: 800, margin: 0, color: 'var(--color-text-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {diseaseDetails.name}
                     </h4>
-                    <ChevronRight size={16} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+                    <IconChevronRight size={16} stroke={2} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
                   </div>
 
                   <div style={{ fontSize: 10.5, fontStyle: 'italic', color: 'var(--color-text-muted)', marginBottom: 2 }}>
@@ -207,12 +239,12 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                    <Calendar size={11} />
+                    <IconCalendar size={12} stroke={2} />
                     <span>{formatDate(record.date)}</span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <MapPin size={11} color="var(--color-primary)" />
+                    <IconMapPin size={12} stroke={2} color="var(--color-primary)" />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {record.locationName || 'Finca Cacaotera'}
                     </span>
@@ -224,41 +256,53 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
         )}
       </div>
 
-      {/* ══ MODAL DE FICHA TÉCNICA DETALLADA ══════════════════════════════════ */}
+      {/* ══ FICHA TÉCNICA DETALLADA - PANTALLA COMPLETA ══════════════════ */}
       {selectedRecord && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
             zIndex: 9999,
-            backgroundColor: 'rgba(10, 20, 15, 0.75)',
-            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
             animation: 'fadeIn 0.2s ease-out'
           }}
-          onClick={() => setSelectedRecord(null)}
+          onClick={handleCloseDetail}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: 440,
-              backgroundColor: 'var(--color-bg-card, #1A2820)',
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              maxHeight: '90vh',
+              maxWidth: 520,
+              height: '100dvh',
+              maxHeight: '100dvh',
+              backgroundColor: 'var(--color-bg-card)',
               overflowY: 'auto',
-              padding: '20px 20px 32px',
-              boxShadow: '0 -10px 40px rgba(0,0,0,0.5)',
+              WebkitOverflowScrolling: 'touch',
+              padding: '20px 20px max(36px, env(safe-area-inset-bottom, 36px))',
+              boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
               gap: 16,
-              border: '1px solid var(--color-border)'
+              border: 'none',
+              animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           >
-            {/* Header del Modal */}
+            {/* Tirador del Bottom Sheet */}
+            <div style={{
+              width: 40,
+              height: 4.5,
+              borderRadius: 3,
+              backgroundColor: 'var(--color-border)',
+              margin: '0 auto 2px',
+              opacity: 0.8
+            }} />
+
+            {/* Header del Bottom Sheet */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
@@ -269,25 +313,25 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                 </h3>
               </div>
               <button
-                onClick={() => setSelectedRecord(null)}
+                onClick={handleCloseDetail}
                 style={{
                   width: 34,
                   height: 34,
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(255,255,255,0.08)',
+                  backgroundColor: 'var(--color-bg)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: 'none',
+                  border: '1px solid var(--color-border)',
                   cursor: 'pointer',
-                  color: 'var(--color-text-dark)'
+                  color: 'var(--color-text-muted)'
                 }}
               >
-                <X size={18} />
+                <IconX size={18} stroke={2} />
               </button>
             </div>
 
-            {/* Fotografía de Campo en Alta Resolución */}
+            {/* Fotografía de Campo en Alta Resolución con Certeza IA */}
             <div
               style={{
                 width: '100%',
@@ -296,18 +340,17 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                 overflow: 'hidden',
                 position: 'relative',
                 backgroundColor: '#000',
-                border: '1.5px solid var(--color-border)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+                border: '1px solid var(--color-border)'
               }}
             >
               {selectedRecord.photo || selectedRecord.image ? (
                 <img
                   src={selectedRecord.photo || selectedRecord.image}
                   alt={selectedRecord.disease}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#0A120D' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#0B140E' }}
                 />
               ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1A2820' }}>
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
                   <HistoryMiniSVG type={selectedRecord.disease} />
                 </div>
               )}
@@ -317,8 +360,8 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                   top: 10,
                   right: 10,
                   backgroundColor: 'rgba(0,0,0,0.75)',
-                  backdropFilter: 'blur(4px)',
-                  color: '#11CAA0',
+                  backdropFilter: 'blur(6px)',
+                  color: '#10B981',
                   padding: '4px 10px',
                   borderRadius: 20,
                   fontSize: 11,
@@ -329,38 +372,38 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
               </div>
             </div>
 
-            {/* Metadatos en cuadrícula */}
+            {/* Metadatos en cuadrícula Material 3 Filled (sin sombras) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 10, border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Finca</span>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text-dark)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Finca</span>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-text-dark)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {selectedRecord.locationName || 'Finca Cacaotera'}
                 </div>
               </div>
 
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 10, border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Productor</span>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text-dark)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Productor</span>
+                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-text-dark)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {selectedRecord.farmer || 'Técnico de Campo'}
                 </div>
               </div>
 
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 10, border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Fecha de Escaneo</span>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dark)', marginTop: 2 }}>
+              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha de Escaneo</span>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text-dark)', marginTop: 3 }}>
                   {formatDate(selectedRecord.date)}
                 </div>
               </div>
 
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 10, border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Severidad</span>
-                <div style={{ fontSize: 12, fontWeight: 800, color: selectedRecord.disease === 'Sano' ? '#10B981' : '#EF4444', marginTop: 2 }}>
+              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severidad</span>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: selectedRecord.disease === 'Sano' ? '#16A34A' : '#EF4444', marginTop: 3 }}>
                   {selectedRecord.disease === 'Sano' ? 'Ninguna' : 'Crítica / Alta'}
                 </div>
               </div>
             </div>
 
-            {/* Coordenadas GPS */}
+            {/* Coordenadas GPS (Color Pizarra/Neutral Suave y Descansado) */}
             {selectedRecord.lat && selectedRecord.lng && (
               <a
                 href={`https://www.google.com/maps?q=${selectedRecord.lat},${selectedRecord.lng}`}
@@ -370,65 +413,121 @@ export default function HistoryTab({ history = [], isOnline, onSyncNow, unsynced
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(17, 202, 160, 0.08)',
-                  border: '1.5px solid rgba(17, 202, 160, 0.25)',
-                  color: '#11CAA0',
+                  padding: '12px 16px',
+                  borderRadius: 16,
+                  backgroundColor: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  color: '#475569',
                   textDecoration: 'none',
-                  fontSize: 12,
-                  fontWeight: 700
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  transition: 'background-color 0.15s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={14} />
-                  <span>GPS: {selectedRecord.lat.toFixed(4)}, {selectedRecord.lng.toFixed(4)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <IconMapPin size={16} stroke={2} color="#64748B" />
+                  <span style={{ color: 'var(--color-text-dark)', fontWeight: 700 }}>
+                    GPS: {selectedRecord.lat.toFixed(4)}, {selectedRecord.lng.toFixed(4)}
+                  </span>
                 </div>
-                <ExternalLink size={14} />
+                <IconExternalLink size={15} stroke={2} color="#94A3B8" />
               </a>
             )}
 
-            {/* Protocolo Fitosanitario Recomendado */}
+            {/* Botón Disparador del Protocolo Fitosanitario (Dialog / Popover) */}
             {DISEASE_CATALOG[selectedRecord.disease] && (
-              <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 14, border: '1px solid var(--color-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <ShieldAlert size={14} color="var(--color-primary)" />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-dark)' }}>
-                    Protocolo de Manejo Recomendado
-                  </span>
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                  {(DISEASE_CATALOG[selectedRecord.disease]?.steps || []).map((step, idx) => (
-                    <li key={idx} style={{ marginBottom: 4 }}>{step}</li>
-                  ))}
-                </ul>
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowProtocolDialog(prev => !prev)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 16,
+                    backgroundColor: showProtocolDialog ? 'rgba(44, 94, 59, 0.08)' : 'var(--color-bg)',
+                    border: showProtocolDialog ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-dark)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <IconShieldExclamation size={18} stroke={2} color="var(--color-primary)" />
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>Protocolo de Manejo Recomendado</span>
+                  </div>
+                  <IconInfoCircle size={17} stroke={2} color="var(--color-primary)" />
+                </button>
+
+                {/* Diálogo Flotante / Tooltip Enriquecido de Pasos del Protocolo */}
+                {showProtocolDialog && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      backgroundColor: 'var(--color-bg-card)',
+                      borderRadius: 18,
+                      padding: '16px 18px',
+                      border: '1.5px solid var(--color-border)',
+                      boxShadow: '0 10px 28px rgba(0,0,0,0.12)',
+                      animation: 'fadeIn 0.2s ease-out'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-primary)' }}>
+                        Pasos Técnicos Sugeridos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowProtocolDialog(false)}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 2 }}
+                      >
+                        <IconX size={15} stroke={2} />
+                      </button>
+                    </div>
+
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                      {(DISEASE_CATALOG[selectedRecord.disease]?.steps || []).map((step, idx) => (
+                        <li key={idx} style={{ marginBottom: 6 }}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Receta Agronómica emitida si existe */}
             {selectedRecord.prescription && (
-              <div style={{ backgroundColor: 'rgba(0, 80, 136, 0.1)', borderRadius: 16, padding: 14, border: '1px solid rgba(0, 80, 136, 0.25)' }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#38BDF8', textTransform: 'uppercase' }}>Receta Agronómica Emitida</span>
+              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: 14, border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Receta Agronómica Emitida</span>
                 <p style={{ fontSize: 12, color: 'var(--color-text-dark)', margin: '4px 0 0', lineHeight: 1.5 }}>
                   {selectedRecord.prescription}
                 </p>
               </div>
             )}
 
+            {/* Botón de Cierre Bottom Sheet */}
             <button
-              onClick={() => setSelectedRecord(null)}
+              type="button"
+              onClick={handleCloseDetail}
               style={{
                 width: '100%',
-                padding: '13px',
-                borderRadius: 14,
+                padding: '16px',
+                borderRadius: 9999,
                 backgroundColor: 'var(--color-primary)',
                 color: '#FFF',
                 fontSize: 14,
                 fontWeight: 800,
+                letterSpacing: '0.5px',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(44, 94, 59, 0.4)'
+                boxShadow: 'none',
+                transition: 'transform 0.1s ease',
+                marginTop: 4
               }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
             >
               Cerrar Ficha
             </button>

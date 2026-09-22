@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { MapPin, ZoomIn, ZoomOut, WifiOff, Cloud, Database } from 'lucide-react';
+import {
+  IconMapPin,
+  IconZoomIn,
+  IconZoomOut,
+  IconWifiOff,
+  IconCloud,
+  IconDatabase
+} from '@tabler/icons-react';
+import './AlertMapTab.css';
 
 const MAP_VIEWBOX = "0 0 400 400";
 
@@ -17,6 +25,14 @@ const OUTBREAK_HOTSPOTS = [
   { id: 'h-4', farm: 'Finca La Estrella - Lote B', disease: 'Monilia', cases: 4, x: 190, y: 200, severity: 'Crítica' },
   { id: 'h-5', farm: 'Lote Comunitario Bajo', disease: 'Escoba de Bruja', cases: 6, x: 80, y: 310, severity: 'Alta' }
 ];
+
+const DISEASE_COLORS = {
+  'Monilia': '#D93025',
+  'Escoba de Bruja': '#F4B400',
+  'Mazorca Negra': '#E37400'
+};
+
+const getDiseaseColor = (disease) => DISEASE_COLORS[disease] ?? '#E37400';
 
 export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
   const [activeFilter, setActiveFilter] = useState('Todos');
@@ -56,11 +72,11 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
       {/* Offline/Online Cache Indicator Bar */}
       <div className={`map-indicator-bar ${isOnline ? 'online' : 'offline'}`}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {isOnline ? <Cloud size={12} /> : <WifiOff size={12} />}
+          {isOnline ? <IconCloud size={13} stroke={2} /> : <IconWifiOff size={13} stroke={2} />}
           {isOnline ? 'CONEXIÓN ACTIVA (Mapas Dinámicos)' : 'TRABAJANDO OFFLINE (Caché Local Activa)'}
         </span>
         <span className="map-indicator-source">
-          <Database size={8} style={{ marginRight: '2px' }} /> {isOnline ? 'Nube' : 'SQLite'}
+          <IconDatabase size={9} stroke={2} style={{ marginRight: '2px' }} /> {isOnline ? 'Nube' : 'SQLite'}
         </span>
       </div>
 
@@ -150,7 +166,7 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
           {/* Heatmap Layer (Foci of infection) */}
           {filteredHotspots.map((hotspot) => {
             const isSelected = selectedHotspot?.id === hotspot.id;
-            const color = hotspot.disease === 'Monilia' ? '#D93025' : hotspot.disease === 'Escoba de Bruja' ? '#F4B400' : '#E37400';
+            const color = getDiseaseColor(hotspot.disease);
             return (
               <g key={hotspot.id} className="cursor-pointer" onClick={() => handleHotspotClick(hotspot)}>
                 <circle
@@ -219,14 +235,14 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
             className="map-ctrl-btn"
             title="Acercar mapa"
           >
-            <ZoomIn size={18} />
+            <IconZoomIn size={18} stroke={2} />
           </button>
           <button
             onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.25))}
             className="map-ctrl-btn"
             title="Alejar mapa"
           >
-            <ZoomOut size={18} />
+            <IconZoomOut size={18} stroke={2} />
           </button>
         </div>
 
@@ -268,7 +284,7 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
 
         {/* Small location tag indicator overlay */}
         <div className="map-location-tag">
-          <MapPin size={12} style={{ color: 'var(--color-primary)' }} />
+          <IconMapPin size={12} stroke={2} style={{ color: 'var(--color-primary)' }} />
           <span>{currentGPS.name}</span>
         </div>
       </div>

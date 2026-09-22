@@ -1,5 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { Wifi, WifiOff, MapPin, RefreshCw, Trash2, Database, Terminal } from 'lucide-react';
+import {
+  IconWifi,
+  IconWifiOff,
+  IconMapPin,
+  IconRefresh,
+  IconTrash,
+  IconDatabase,
+  IconTerminal2
+} from '@tabler/icons-react';
 
 const GPS_PRESETS = [
   { name: 'Finca La Estrella (Lote A)', lat: -1.0234, lng: -77.5432 },
@@ -33,7 +41,7 @@ export default function SimulationPanel({
         {/* Header */}
         <div className="sim-header">
           <div className="sim-header-icon">
-            <Database size={24} />
+            <IconDatabase size={24} stroke={1.8} />
           </div>
           <div>
             <h2 className="sim-title">Panel de Control AI</h2>
@@ -46,7 +54,7 @@ export default function SimulationPanel({
           <div className="sim-section-title">
             <span>Conexión a Internet</span>
             <span className={`sim-badge ${isOnline ? 'online' : 'offline'}`}>
-              {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {isOnline ? <IconWifi size={12} stroke={2} /> : <IconWifiOff size={12} stroke={2} />}
               {isOnline ? 'CONECTADO (4G/Wi-Fi)' : 'SIN SEÑAL (Offline)'}
             </span>
           </div>
@@ -70,7 +78,7 @@ export default function SimulationPanel({
         <div className="sim-section">
           <div className="sim-section-title">
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <MapPin size={16} className="text-primary" /> Ubicación del Agricultor
+              <IconMapPin size={16} stroke={2} className="text-primary" /> Ubicación del Agricultor
             </span>
           </div>
           <div className="gps-list">
@@ -122,7 +130,7 @@ export default function SimulationPanel({
       <div className="log-console">
         <div className="log-console-header">
           <span className="log-console-title">
-            <Terminal size={14} style={{ color: '#4ade80' }} /> LOGS DE BASE DE DATOS
+            <IconTerminal2 size={14} stroke={2} style={{ color: '#4ade80' }} /> LOGS DE BASE DE DATOS
           </span>
           <div className="log-btn-group">
             <button
@@ -131,14 +139,14 @@ export default function SimulationPanel({
               disabled={!isOnline || unsyncedCount === 0}
               className={`log-console-btn ${isOnline && unsyncedCount > 0 ? 'primary' : ''}`}
             >
-              <RefreshCw size={12} className={unsyncedCount > 0 && isOnline ? 'animate-spin' : ''} />
+              <IconRefresh size={12} stroke={2} className={unsyncedCount > 0 && isOnline ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClearDb}
               title="Restablecer base de datos SQLite"
               className="log-console-btn"
             >
-              <Trash2 size={12} />
+              <IconTrash size={12} stroke={2} />
             </button>
           </div>
         </div>
