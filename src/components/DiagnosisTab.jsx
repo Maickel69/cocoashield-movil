@@ -14,6 +14,12 @@ import {
 } from './DiagnosisTab.subwidgets';
 import logo from '../assets/logo.png';
 
+const DEFAULT_HERO_PHOTOS = [
+  'https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1606041008023-472dfb5e530f?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=300&q=80'
+];
+
 export default function DiagnosisTab({
   onSaveDiagnosis,
   onRunOnlineDiagnosis,
@@ -193,6 +199,11 @@ export default function DiagnosisTab({
 
   const activeDisease = result ? DISEASE_CATALOG[result.disease] : null;
 
+  const photoPool = (recentHistory || []).filter(x => x.photo || x.image).map(x => x.photo || x.image);
+  const leftPhoto = photoPool[1] || DEFAULT_HERO_PHOTOS[0];
+  const centerPhoto = photoPool[0] || DEFAULT_HERO_PHOTOS[1];
+  const rightPhoto = photoPool[2] || DEFAULT_HERO_PHOTOS[2];
+
   return (
     <div className="tab-content animate-fade-in">
       {/* ── Encabezado Superior con Marca ────────────────────────── */}
@@ -222,27 +233,60 @@ export default function DiagnosisTab({
       {/* ══ ESTADO: IDLE (HERO CARD DE ESCANEO & DIAGNÓSTICOS RECIENTES) ══════ */}
       {processingState === 'idle' && (
         <div className="flex flex-col gap-5">
-          {/* Tarjeta Principal de Escaneo (Material 3 Filled Card) */}
+          {/* Tarjeta Principal de Escaneo (Diseño con Fotos Detrás del Botón de Cámara) */}
           <div className="p-6 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] border-none shadow-[0_2px_16px_rgba(18,30,23,0.04)] dark:shadow-none flex flex-col items-center text-center gap-4.5">
-            {/* Botón Circular Central de Cámara con Anillo Suave */}
-            <button
-              type="button"
+            {/* Clúster Visual: Stack de Fotos en Abanico con Botón Central de Cámara */}
+            <div
               onClick={handleOpenCamera}
-              aria-label="Abrir cámara para escanear mazorca"
-              className="w-20 h-20 rounded-full bg-[var(--color-primary-container)] flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95 border-none select-none outline-none p-0"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCamera(); }}
+              className="relative w-[184px] h-[132px] mx-auto cursor-pointer select-none group"
+              title="Toma una foto o sube desde la galería"
             >
-              <div className="w-14 h-14 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center shadow-md">
-                <IconCamera size={28} stroke={2} />
+              {/* Foto Izquierda (Inclinada -14deg) */}
+              <div className="w-[74px] h-[92px] rounded-2xl overflow-hidden shadow-md -rotate-[14deg] absolute left-3 top-2 border-2 border-white dark:border-stone-800 bg-stone-200 dark:bg-stone-800 group-hover:-rotate-[18deg] group-hover:-translate-x-1 transition-transform duration-300">
+                <img
+                  src={leftPhoto}
+                  alt="Muestra botánica izquierda"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
               </div>
-            </button>
 
-            {/* Tipografía Fitosanitaria Limpia */}
+              {/* Foto Derecha (Inclinada 14deg) */}
+              <div className="w-[74px] h-[92px] rounded-2xl overflow-hidden shadow-md rotate-[14deg] absolute right-3 top-2 border-2 border-white dark:border-stone-800 bg-stone-200 dark:bg-stone-800 group-hover:rotate-[18deg] group-hover:translate-x-1 transition-transform duration-300">
+                <img
+                  src={rightPhoto}
+                  alt="Muestra botánica derecha"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+
+              {/* Foto Central (Frontal con borde blanco) */}
+              <div className="w-[84px] h-[100px] rounded-2xl overflow-hidden shadow-lg absolute left-1/2 -translate-x-1/2 top-0 z-10 border-2 border-white dark:border-stone-700 bg-stone-300 dark:bg-stone-700 group-hover:scale-105 transition-transform duration-300">
+                <img
+                  src={centerPhoto}
+                  alt="Muestra botánica central"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+
+              {/* Botón Circular de Cámara Superpuesto en el Centro Inferior */}
+              <div className="w-14 h-14 rounded-full bg-white dark:bg-[var(--color-surface-container-high)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center absolute left-1/2 -translate-x-1/2 bottom-0 z-20 border border-stone-100 dark:border-stone-700 group-hover:scale-110 active:scale-95 transition-transform duration-200">
+                <IconCamera size={26} stroke={2} className="text-[#1E4D2B] dark:text-[#7ED4A2]" />
+              </div>
+            </div>
+
+            {/* Tipografía Fitosanitaria */}
             <div className="flex flex-col gap-1.5 max-w-[280px]">
-              <h2 className="text-base font-extrabold text-[var(--color-text-dark)] m-0 tracking-tight">
-                Escanear Mazorca de Cacao
+              <h2 className="text-[16px] font-extrabold text-[var(--color-text-dark)] m-0 tracking-tight leading-tight">
+                Toma una foto o sube desde la galería
               </h2>
               <p className="text-xs text-[var(--color-text-muted)] m-0 leading-relaxed font-normal">
-                Apunta la cámara al fruto a 20–30 cm con buena iluminación para diagnóstico instantáneo.
+                Para máxima certeza, enfoca el fruto de cacao con buena iluminación a 20-30 cm.
               </p>
             </div>
 
