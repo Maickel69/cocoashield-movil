@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   IconMapPin,
   IconZoomIn,
   IconZoomOut,
   IconWifiOff,
   IconCloud,
-  IconDatabase
+  IconDatabase,
+  IconX
 } from '@tabler/icons-react';
-import './AlertMapTab.css';
+import { Dialog } from '@base-ui/react/dialog';
 
 const MAP_VIEWBOX = "0 0 400 400";
 
@@ -69,19 +70,21 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
 
   return (
     <div className="flex flex-col h-full animate-fade-in relative" style={{ height: '100%' }}>
-      {/* Offline/Online Cache Indicator Bar */}
-      <div className={`map-indicator-bar ${isOnline ? 'online' : 'offline'}`}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {isOnline ? <IconCloud size={13} stroke={2} /> : <IconWifiOff size={13} stroke={2} />}
+      {/* Offline/Online Cache Indicator Bar with Tailwind */}
+      <div className={`px-4 py-2 flex justify-between items-center text-[11px] font-bold tracking-wide border-b ${
+        isOnline ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-900 border-amber-200'
+      }`}>
+        <span className="flex items-center gap-1.5">
+          {isOnline ? <IconCloud size={14} stroke={2} /> : <IconWifiOff size={14} stroke={2} />}
           {isOnline ? 'CONEXIÓN ACTIVA (Mapas Dinámicos)' : 'TRABAJANDO OFFLINE (Caché Local Activa)'}
         </span>
-        <span className="map-indicator-source">
-          <IconDatabase size={9} stroke={2} style={{ marginRight: '2px' }} /> {isOnline ? 'Nube' : 'SQLite'}
+        <span className="inline-flex items-center gap-1 uppercase text-[9px] font-bold bg-white text-stone-700 border border-stone-200 px-2 py-0.5 rounded-md shadow-2xs">
+          <IconDatabase size={10} stroke={2} /> {isOnline ? 'Nube' : 'SQLite'}
         </span>
       </div>
 
-      {/* Disease quick filters */}
-      <div className="map-filter-bar">
+      {/* Disease quick filters with Tailwind */}
+      <div className="p-3 bg-white border-b border-stone-200 flex gap-2 overflow-x-auto no-scrollbar z-10">
         {['Todos', 'Monilia', 'Escoba de Bruja', 'Mazorca Negra'].map(filterName => {
           const isActive = activeFilter === filterName;
           return (
@@ -91,7 +94,11 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
                 setActiveFilter(filterName);
                 setSelectedHotspot(null);
               }}
-              className={`filter-pill ${isActive ? 'active' : ''}`}
+              className={`text-xs px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-all duration-200 cursor-pointer border ${
+                isActive
+                  ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                  : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100 hover:text-stone-800'
+              }`}
             >
               {filterName}
             </button>
@@ -99,8 +106,8 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
         })}
       </div>
 
-      {/* SVG Map Canvas Area */}
-      <div className="map-viewport">
+      {/* SVG Map Canvas Area with Tailwind */}
+      <div className="flex-1 relative bg-[#E6F3E7] overflow-hidden min-h-[calc(100dvh-120px-68px)]">
         <svg
           viewBox={MAP_VIEWBOX}
           style={{
@@ -228,64 +235,86 @@ export default function AlertMapTab({ isOnline, currentGPS, addLog }) {
           </g>
         </svg>
 
-        {/* Floating Map Controls */}
-        <div className="map-controls">
+        {/* Floating Map Controls with Tailwind */}
+        <div className="absolute right-4 bottom-5 flex flex-col gap-2 z-10">
           <button
             onClick={() => setZoomLevel(prev => Math.min(2.5, prev + 0.25))}
-            className="map-ctrl-btn"
+            className="w-10 h-10 rounded-2xl bg-white/95 backdrop-blur-xs border border-stone-200 shadow-md flex items-center justify-center text-stone-700 hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
             title="Acercar mapa"
           >
             <IconZoomIn size={18} stroke={2} />
           </button>
           <button
             onClick={() => setZoomLevel(prev => Math.max(1, prev - 0.25))}
-            className="map-ctrl-btn"
+            className="w-10 h-10 rounded-2xl bg-white/95 backdrop-blur-xs border border-stone-200 shadow-md flex items-center justify-center text-stone-700 hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
             title="Alejar mapa"
           >
             <IconZoomOut size={18} stroke={2} />
           </button>
         </div>
 
-        {/* Hotspot details bottom card drawer */}
-        {selectedHotspot && (
-          <div className="map-popup animate-fade-in">
-            <div className="popup-header">
-              <div>
-                <span className="popup-title-label">Ubicación del brote:</span>
-                <h4 className="popup-title">{selectedHotspot.farm}</h4>
-              </div>
-              <span className={`popup-badge ${selectedHotspot.severity === 'Crítica' ? 'critical' : 'medium'}`}>
-                {selectedHotspot.severity}
-              </span>
-            </div>
+        {/* Hotspot details bottom card drawer using Base UI Dialog & Tailwind CSS */}
+        <Dialog.Root open={Boolean(selectedHotspot)} onOpenChange={(open) => !open && setSelectedHotspot(null)}>
+          <Dialog.Portal>
+            <Dialog.Backdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+            <Dialog.Popup className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto bg-white rounded-3xl p-5 shadow-2xl border border-emerald-200 z-50 transition-all duration-200 ease-out data-[ending-style]:translate-y-6 data-[ending-style]:opacity-0 data-[starting-style]:translate-y-6 data-[starting-style]:opacity-0">
+              {selectedHotspot && (
+                <>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-800/60 block">
+                        Ubicación del brote
+                      </span>
+                      <Dialog.Title className="text-base font-black text-stone-800 m-0">
+                        {selectedHotspot.farm}
+                      </Dialog.Title>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                        selectedHotspot.severity === 'Crítica'
+                          ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {selectedHotspot.severity}
+                      </span>
+                      <Dialog.Close className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-600 transition-colors cursor-pointer border-none p-0">
+                        <IconX size={16} stroke={2.5} />
+                      </Dialog.Close>
+                    </div>
+                  </div>
 
-            <div className="popup-grid">
-              <div>
-                <span className="popup-grid-title">Plaga reportada</span>
-                <span className="popup-grid-val">
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: selectedHotspot.disease === 'Monilia' ? '#D93025' : '#F4B400', display: 'inline-block' }} />
-                  {selectedHotspot.disease}
-                </span>
-              </div>
-              <div>
-                <span className="popup-grid-title">Casos reportados</span>
-                <span className="popup-grid-val popup-grid-val-bold">{selectedHotspot.cases} árboles</span>
-              </div>
-            </div>
+                  <div className="grid grid-cols-2 gap-3 pt-3 mt-2 border-t border-stone-100">
+                    <div className="bg-stone-50/80 p-2.5 rounded-2xl border border-stone-100">
+                      <span className="text-[11px] font-medium text-stone-500 block mb-1">Plaga reportada</span>
+                      <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full inline-block shadow-xs"
+                          style={{ backgroundColor: selectedHotspot.disease === 'Monilia' ? '#D93025' : '#F4B400' }}
+                        />
+                        {selectedHotspot.disease}
+                      </span>
+                    </div>
+                    <div className="bg-stone-50/80 p-2.5 rounded-2xl border border-stone-100">
+                      <span className="text-[11px] font-medium text-stone-500 block mb-1">Casos reportados</span>
+                      <span className="text-sm font-black text-stone-800">
+                        {selectedHotspot.cases} <span className="text-xs font-semibold text-stone-500">árboles</span>
+                      </span>
+                    </div>
+                  </div>
 
-            <button
-              onClick={() => setSelectedHotspot(null)}
-              className="popup-close-btn"
-            >
-              Cerrar Detalle
-            </button>
-          </div>
-        )}
+                  <Dialog.Close className="mt-4 w-full py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] text-white font-bold text-xs tracking-wide transition-all shadow-md shadow-emerald-900/10 cursor-pointer border-none text-center block">
+                    Cerrar Detalle
+                  </Dialog.Close>
+                </>
+              )}
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
 
-        {/* Small location tag indicator overlay */}
-        <div className="map-location-tag">
-          <IconMapPin size={12} stroke={2} style={{ color: 'var(--color-primary)' }} />
-          <span>{currentGPS.name}</span>
+        {/* Small location tag indicator overlay with Tailwind */}
+        <div className="absolute left-4 top-4 bg-white/90 backdrop-blur-xs border border-stone-200 px-3 py-1.5 rounded-xl shadow-xs text-[11px] font-bold text-stone-800 flex items-center gap-1.5 z-10 max-w-[200px] truncate">
+          <IconMapPin size={13} stroke={2.5} className="text-emerald-700 shrink-0" />
+          <span className="truncate">{currentGPS.name}</span>
         </div>
       </div>
     </div>

@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { IconRefresh } from '@tabler/icons-react';
 
 export default function AutoUpdateBanner() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [registration, setRegistration] = useState(null);
 
   useEffect(() => {
+    let refreshing = false;
+    const handleControllerChange = () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    };
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
         setRegistration(reg);
@@ -28,18 +37,18 @@ export default function AutoUpdateBanner() {
         console.warn('[PWA] Error registrando ServiceWorker:', err);
       });
 
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      });
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
     }
+
+    return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
+    };
   }, []);
 
   const handleUpdate = () => {
-    if (registration && registration.waiting) {
+    if (registration?.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
       window.location.reload();
@@ -67,9 +76,11 @@ export default function AutoUpdateBanner() {
       maxWidth: '90%',
       width: '380px'
     }}>
-      <span style={{ fontSize: '20px' }}>🚀</span>
+      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+        <IconRefresh size={18} className="text-blue-400" />
+      </div>
       <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.4' }}>
-        <strong>¡Nueva versión disponible!</strong>
+        <strong>Nueva versión disponible</strong>
         <div style={{ color: '#94a3b8' }}>Se han aplicado mejoras en el sistema.</div>
       </div>
       <button

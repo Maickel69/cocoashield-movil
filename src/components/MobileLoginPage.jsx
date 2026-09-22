@@ -163,7 +163,7 @@ export default function MobileLoginPage({ onLoginSuccess }) {
               Usuario o Correo
             </label>
             <div style={{ position: "relative" }}>
-              <IconUser size={16} stroke={1.8} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748B" }} />
+              <IconUser size={16} stroke={1.8} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.45)" }} />
               <input
                 type="text"
                 value={identifier}
@@ -184,7 +184,7 @@ export default function MobileLoginPage({ onLoginSuccess }) {
               Contraseña
             </label>
             <div style={{ position: "relative" }}>
-              <IconLock size={16} stroke={1.8} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748B" }} />
+              <IconLock size={16} stroke={1.8} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.45)" }} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}

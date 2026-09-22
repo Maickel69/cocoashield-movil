@@ -19,7 +19,7 @@
 
 .map-indicator-bar.offline {
   background-color: #fef7e0;
-  color: #b06000;
+  color: #78350f;
   border-bottom: 1px solid #feebc8;
 }
 
@@ -150,12 +150,12 @@
 
 .popup-badge.medium {
   background-color: #fef7e0;
-  color: #b06000;
+  color: #78350f;
 }
 
 .popup-grid {
   display: grid;
-  grid-template-cols: 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   border-top: 1px solid var(--color-border);
   padding-top: 10px;

@@ -1,58 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   IconMapPin,
   IconCalendar,
-  IconUser,
+  IconPlant2,
   IconShieldExclamation,
-  IconCircleCheck,
-  IconChevronRight,
+  IconSparkles,
   IconX,
   IconExternalLink,
-  IconFilter,
-  IconSparkles,
-  IconPlant2,
-  IconInfoCircle
+  IconSearch,
+  IconChevronRight,
+  IconMaximize,
+  IconArrowLeft
 } from '@tabler/icons-react';
+import { Dialog } from '@base-ui/react/dialog';
+import { Tooltip } from '@base-ui/react/tooltip';
 import { DISEASE_CATALOG } from './Database';
+import { CocoaPodSVG } from './DiagnosisTab.subwidgets';
 
-// Offline SVGs for thumbnails in history list when image is missing
-const HistoryMiniSVG = ({ type }) => {
-  switch (type) {
-    case 'Monilia':
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full" style={{ width: '100%', height: '100%' }}>
-          <rect width="100" height="100" fill="#E2EBF0" />
-          <path d="M50 20 C62 28, 70 40, 70 55 C70 70, 62 82, 50 86 C38 82, 30 70, 30 55 C30 40, 38 28, 50 20 Z" fill="#C68A4C" stroke="#8D5A2B" strokeWidth="2" />
-          <circle cx="50" cy="50" r="10" fill="#FAFAFA" stroke="#D1D5DB" strokeWidth="0.8" strokeDasharray="2 1.5" opacity="0.95" />
-        </svg>
-      );
-    case 'Escoba de Bruja':
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full" style={{ width: '100%', height: '100%' }}>
-          <rect width="100" height="100" fill="#FAF0E6" />
-          <path d="M50 80 C50 60, 45 45, 35 35" fill="none" stroke="#5C4033" strokeWidth="4.5" strokeLinecap="round" />
-          <path d="M50 80 C50 65, 52 50, 62 42" fill="none" stroke="#5C4033" strokeWidth="3.5" strokeLinecap="round" />
-          <path d="M35 35 C30 25, 25 30, 20 27" fill="none" stroke="#8B5A2B" strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M62 42 C67 32, 72 35, 77 31" fill="none" stroke="#8B5A2B" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      );
-    case 'Mazorca Negra':
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full" style={{ width: '100%', height: '100%' }}>
-          <rect width="100" height="100" fill="#EADCC9" />
-          <path d="M50 20 C62 28, 70 40, 70 55 C70 70, 62 82, 50 86 C38 82, 30 70, 30 55 C30 40, 38 28, 50 20 Z" fill="#B5804C" stroke="#7A4E26" strokeWidth="2" />
-          <path d="M50 86 C38 82, 32 72, 36 65 C42 60, 55 62, 62 68 C66 73, 62 82, 50 86 Z" fill="#2B2017" />
-        </svg>
-      );
-    case 'Sano':
-    default:
-      return (
-        <svg viewBox="0 0 100 100" className="w-full h-full" style={{ width: '100%', height: '100%' }}>
-          <rect width="100" height="100" fill="#E6F2E7" />
-          <path d="M50 20 C62 28, 70 40, 70 55 C70 70, 62 82, 50 86 C38 82, 30 70, 30 55 C30 40, 38 28, 50 20 Z" fill="#E5A93C" stroke="#A67117" strokeWidth="2" />
-        </svg>
-      );
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+const DISEASE_CATEGORY_COLORS = {
+  Sano: 'text-[#205537] dark:text-[#7ED4A2]',
+  Monilia: 'text-[#8B5514] dark:text-[#EDB271]',
+  'Mazorca Negra': 'text-[#7B3D23] dark:text-[#ECA58A]',
+  'Escoba de Bruja': 'text-[#6B3356] dark:text-[#E1A4CB]'
+};
+const getDiseaseCategoryColor = (d) => DISEASE_CATEGORY_COLORS[d] || 'text-[#205537] dark:text-[#7ED4A2]';
+
+const getRelativeTimeLabel = (d, diffDays, timeStr) => {
+  if (diffDays <= 0) return `Hoy, ${timeStr}`;
+  if (diffDays === 1) return `Ayer, ${timeStr}`;
+  if (diffDays < 7) return `${DAYS[d.getDay()]}, ${timeStr}`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `Hace ${weeks} ${weeks === 1 ? 'semana' : 'semanas'} • ${timeStr}`;
   }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `Hace ${months} ${months === 1 ? 'mes' : 'meses'} • ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  }
+  const years = Math.floor(diffDays / 365);
+  return `Hace ${years} ${years === 1 ? 'año' : 'años'} • ${d.getFullYear()}`;
+};
+
+const formatSmartDate = (isoString, showExact = false) => {
+  if (!isoString) return 'Hoy';
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return isoString;
+
+  const h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  const timeStr = `${h % 12 || 12}:${m} ${h >= 12 ? 'pm' : 'am'}`;
+  if (showExact) return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} • ${timeStr}`;
+
+  const today = new Date().setHours(0, 0, 0, 0);
+  const target = new Date(d).setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today - target) / 86400000);
+
+  return getRelativeTimeLabel(d, diffDays, timeStr);
 };
 
 export default function HistoryTab({
@@ -62,15 +67,87 @@ export default function HistoryTab({
   unsyncedCount,
   onDetailOpen,
   selectedRecord: externalSelectedRecord,
-  onSelectRecord: externalOnSelectRecord
+  onSelectRecord: externalOnSelectRecord,
+  isLoading = false
 }) {
   const [internalSelectedRecord, setInternalSelectedRecord] = useState(null);
-  const [showProtocolDialog, setShowProtocolDialog] = useState(false);
   const [filterType, setFilterType] = useState('Todos');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showStepsDialog, setShowStepsDialog] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [showExactDate, setShowExactDate] = useState(false);
+
+  // Gesto táctil de arrastrar para cerrar (Swipe down to dismiss)
+  const [sheetTranslateY, setSheetTranslateY] = useState(0);
+  const [isSheetDragging, setIsSheetDragging] = useState(false);
+  const touchStartY = useRef(0);
+  const currentDeltaY = useRef(0);
+  const isEligibleForDrag = useRef(false);
+  const popupRef = useRef(null);
 
   const selectedRecord = externalSelectedRecord !== undefined ? externalSelectedRecord : internalSelectedRecord;
 
+  const handleTouchStart = (e) => {
+    if (popupRef.current && popupRef.current.scrollTop > 5) {
+      isEligibleForDrag.current = false;
+      return;
+    }
+    isEligibleForDrag.current = true;
+    touchStartY.current = e.touches[0].clientY;
+    currentDeltaY.current = 0;
+    setIsSheetDragging(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isEligibleForDrag.current) return;
+    const delta = Math.max(0, e.touches[0].clientY - touchStartY.current);
+    currentDeltaY.current = delta;
+    setSheetTranslateY(delta);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isEligibleForDrag.current) return;
+    isEligibleForDrag.current = false;
+    setIsSheetDragging(false);
+    if (currentDeltaY.current > 90) {
+      setSheetTranslateY(window.innerHeight || 800);
+      setTimeout(() => { handleCloseDetail(); setSheetTranslateY(0); currentDeltaY.current = 0; }, 220);
+    } else {
+      setSheetTranslateY(0);
+      currentDeltaY.current = 0;
+    }
+  };
+
+  const filteredHistory = useMemo(() => {
+    if (!Array.isArray(history)) return [];
+    let list = history;
+    if (filterType !== 'Todos') {
+      list = list.filter((item) => item.disease === filterType);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((item) => {
+        const disease = (item.disease || '').toLowerCase();
+        const loc = (item.locationName || item.location || '').toLowerCase();
+        const date = (item.date || '').toLowerCase();
+        return disease.includes(q) || loc.includes(q) || date.includes(q);
+      });
+    }
+    return list;
+  }, [history, filterType, searchQuery]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = { Todos: Array.isArray(history) ? history.length : 0, Monilia: 0, 'Mazorca Negra': 0, 'Escoba de Bruja': 0, Sano: 0 };
+    if (Array.isArray(history)) {
+      history.forEach((item) => {
+        if (counts[item.disease] !== undefined) counts[item.disease] += 1;
+      });
+    }
+    return counts;
+  }, [history]);
+
   const handleOpenDetail = (record) => {
+    setShowExactDate(false);
     if (externalOnSelectRecord) {
       externalOnSelectRecord(record);
     } else {
@@ -80,460 +157,428 @@ export default function HistoryTab({
   };
 
   const handleCloseDetail = () => {
+    setShowExactDate(false);
     if (externalOnSelectRecord) {
       externalOnSelectRecord(null);
     } else {
       setInternalSelectedRecord(null);
-      setShowProtocolDialog(false);
       onDetailOpen?.(false);
     }
   };
 
   const formatDate = (isoString) => {
     if (!isoString) return '';
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const hour = date.getHours().toString().padStart(2, '0');
-    const minute = date.getMinutes().toString().padStart(2, '0');
-    return `${day} ${month}, ${hour}:${minute}`;
+    const d = new Date(isoString);
+    return Number.isNaN(d.getTime()) ? isoString : `${d.getDate()}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
   };
 
-  const filteredHistory = history.filter(item => {
-    if (filterType === 'Todos') return true;
-    return (item.disease || '').toLowerCase().includes(filterType.toLowerCase());
-  });
-
-  const getBadgeStyle = (disease) => {
-    switch (disease) {
-      case 'Monilia':
-        return { bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444', border: '#EF4444' };
-      case 'Mazorca Negra':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B', border: '#F59E0B' };
-      case 'Escoba de Bruja':
-        return { bg: 'rgba(217, 119, 6, 0.15)', text: '#D97706', border: '#D97706' };
-      case 'Sano':
-      default:
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981', border: '#10B981' };
+  const renderHistoryContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-6 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] shadow-[0_2px_12px_rgba(18,30,23,0.03)] dark:shadow-none gap-3.5 animate-fade-in">
+          {/* M3 Circular Progress Indicator (Filled & Tonal) */}
+          <div className="w-10 h-10 rounded-full border-3 border-[var(--color-primary-container)] border-t-[var(--color-primary)] animate-spin" />
+          <div className="flex flex-col items-center gap-0.5 text-center">
+            <span className="text-xs font-bold text-[var(--color-text-dark)]">
+              Cargando historial fitosanitario...
+            </span>
+            <span className="text-[11px] text-[var(--color-text-muted)] font-normal">
+              Sincronizando registros con el servidor
+            </span>
+          </div>
+        </div>
+      );
     }
+
+    if (filteredHistory.length === 0) {
+      return (
+        <div className="text-center py-12 px-6 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] shadow-[0_2px_12px_rgba(18,30,23,0.03)]">
+          <IconPlant2 size={40} stroke={1.6} className="text-[var(--color-primary)] mx-auto mb-3" />
+          <h3 className="text-base font-bold text-[var(--color-text-dark)] mb-1">
+            No se encontraron diagnósticos
+          </h3>
+          <p className="text-xs text-[var(--color-text-muted)] max-w-xs mx-auto leading-relaxed">
+            {searchQuery ? `No hay resultados para "${searchQuery}"` : `Sin registros en la categoría ${filterType}`}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {filteredHistory.map((record) => {
+          const diseaseDetails = DISEASE_CATALOG[record.disease] || DISEASE_CATALOG['Sano'];
+          const photoUrl = record.photo || record.image;
+
+          return (
+            <button
+              key={record.id}
+              type="button"
+              onClick={() => handleOpenDetail(record)}
+              className="w-full text-left group flex items-center gap-3.5 p-4 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] shadow-[0_2px_12px_rgba(18,30,23,0.04)] dark:shadow-none hover:bg-[var(--color-surface-container-low)] dark:hover:bg-[var(--color-surface-container-high)] active:scale-[0.99] transition-all duration-200 cursor-pointer border-none select-none"
+            >
+              {/* Miniatura Cuadrada Material 3 (rounded-2xl sin borde) */}
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 bg-[var(--color-surface-container)] border-none">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt={record.disease}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full p-2">
+                    <CocoaPodSVG type={record.disease} />
+                  </div>
+                )}
+              </div>
+
+              {/* Columna Central: Título, Categoría con Color, Fecha y Finca */}
+              <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                <h4 className="text-[14px] font-bold text-[var(--color-text-dark)] truncate m-0">
+                  {diseaseDetails.name}
+                </h4>
+
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className={`font-semibold ${getDiseaseCategoryColor(record.disease)}`}>
+                    {record.disease}
+                  </span>
+                  <span className="text-[var(--color-text-muted)]/50">•</span>
+                  <span className="text-[var(--color-text-muted)] font-medium">
+                    {formatDate(record.date)}
+                  </span>
+                </div>
+
+                <div className="text-xs text-[var(--color-text-muted)] truncate font-normal">
+                  {record.locationName || 'Finca Cacaotera Lote 1'}
+                </div>
+              </div>
+
+              {/* Columna Derecha: Certeza Destacada en Tono M3 y Chevron Lateral */}
+              <div className="flex flex-col items-end justify-between self-stretch shrink-0 py-0.5">
+                <span className="text-[13px] font-bold text-[#1F4E34] dark:text-[#7ED4A2] tracking-tight leading-none">
+                  {record.certainty || record.confidence || 90}%
+                </span>
+                <IconChevronRight
+                  size={16}
+                  stroke={2.2}
+                  className="text-[var(--color-text-muted)]/40 group-hover:translate-x-0.5 transition-transform"
+                />
+              </div>
+            </button>
+          );
+        })}
+      </>
+    );
   };
 
   return (
-    <div className="tab-content animate-fade-in" style={{ paddingBottom: 20 }}>
-      {/* Filter Chips Bar */}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 8, scrollbarWidth: 'none' }}>
-        {['Todos', 'Monilia', 'Mazorca Negra', 'Escoba de Bruja', 'Sano'].map(f => {
+    <div className="tab-content animate-fade-in pb-12">
+      {/* Barra de Búsqueda Material 3 Filled Expressive */}
+      <div className="relative mb-3.5 flex items-center">
+        <IconSearch size={20} stroke={2} className="absolute left-4 text-[var(--color-text-muted)] pointer-events-none z-10" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Buscar diagnósticos, parcelas..."
+          style={{ paddingLeft: '46px', paddingRight: '42px' }}
+          className="w-full h-13 rounded-full bg-[var(--color-surface-container-high)] text-sm font-medium text-[var(--color-text-dark)] placeholder:text-[var(--color-text-muted)]/75 focus:outline-none focus:bg-[var(--color-surface-container-highest)] border-none shadow-none transition-colors"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)] p-1 rounded-full cursor-pointer z-10 border-none bg-transparent"
+          >
+            <IconX size={17} stroke={2} />
+          </button>
+        )}
+      </div>
+
+      {/* Chips de Categorías (Material 3 Filled & Tonal Filter Chips) */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-3.5 -mx-1 px-1 no-scrollbar items-center">
+        {['Todos', 'Monilia', 'Mazorca Negra', 'Escoba de Bruja', 'Sano'].map((f) => {
           const active = filterType === f;
+          const count = categoryCounts[f] ?? 0;
           return (
             <button
               key={f}
+              type="button"
               onClick={() => setFilterType(f)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                backgroundColor: active ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.05)',
-                color: active ? '#FFFFFF' : 'var(--color-text-muted)',
-                border: active ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
+              className={`inline-flex items-center px-4 py-2.5 rounded-full text-xs whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] cursor-pointer shrink-0 font-semibold border-none select-none ${
+                active
+                  ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] shadow-sm'
+                  : 'bg-[var(--color-surface-container-high)] text-[var(--color-text-dark)] hover:bg-[var(--color-surface-container-highest)] active:scale-95'
+              }`}
             >
-              {f}
+              <span>{f}</span>
+              <span
+                aria-hidden={!active}
+                className={`inline-flex items-center overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] ${
+                  active
+                    ? 'max-w-[48px] opacity-100 ml-2 scale-100'
+                    : 'max-w-0 opacity-0 ml-0 scale-75 pointer-events-none'
+                }`}
+              >
+                <span className="inline-flex items-center justify-center text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center leading-none bg-white/20 text-white dark:bg-black/20 dark:text-[#072014] select-none">
+                  {count}
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* History Cards List */}
-      <div className="hist-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {filteredHistory.length === 0 ? (
-          <div className="hist-empty" style={{ textAlign: 'center', padding: '36px 16px', borderRadius: 16, border: '1px dashed var(--color-border)' }}>
-            <IconPlant2 size={40} stroke={1.5} color="var(--color-primary)" style={{ margin: '0 auto 10px', display: 'block' }} />
-            <h3 className="hist-empty-title" style={{ fontSize: 16, fontWeight: 800, margin: '0 0 6px', color: 'var(--color-text-dark)' }}>
-              {filterType === 'Todos' ? 'Sin registros aún' : `Sin registros de ${filterType}`}
-            </h3>
-            <p className="hist-empty-desc" style={{ fontSize: 12.5, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
-              Toma una foto desde la pestaña de Diagnóstico para registrar tu primer caso con IA.
-            </p>
-          </div>
-        ) : (
-          filteredHistory.map((record) => {
-            const diseaseDetails = DISEASE_CATALOG[record.disease] || DISEASE_CATALOG['Sano'];
-            const photoUrl = record.photo || record.image;
-            return (
-              <div
-                key={record.id}
-                onClick={() => handleOpenDetail(record)}
-                className="hist-card"
-                style={{
-                  cursor: 'pointer',
-                  borderRadius: 14,
-                  padding: '10px 12px',
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  backgroundColor: 'var(--color-bg-card)',
-                  border: '1px solid var(--color-border)',
-                  boxShadow: 'none',
-                  transition: 'background-color 0.15s ease, transform 0.1s ease'
-                }}
-                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.99)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                {/* Photo Thumbnail */}
-                <div
-                  style={{
-                    width: 76,
-                    height: 76,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    position: 'relative',
-                    backgroundColor: 'rgba(0,0,0,0.06)',
-                    border: '1px solid var(--color-border)'
-                  }}
-                >
-                  {photoUrl ? (
-                    <img
-                      src={photoUrl}
-                      alt={record.disease}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <HistoryMiniSVG type={record.disease} />
-                  )}
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: 4,
-                      right: 4,
-                      fontSize: 8.5,
-                      fontWeight: 900,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
-                      color: '#FFF',
-                      padding: '1px 5px',
-                      borderRadius: 6
-                    }}
-                  >
-                    {record.certainty}%
-                  </span>
-                </div>
-
-                {/* Details */}
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <h4 style={{ fontSize: 14, fontWeight: 800, margin: 0, color: 'var(--color-text-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {diseaseDetails.name}
-                    </h4>
-                    <IconChevronRight size={16} stroke={2} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
-                  </div>
-
-                  <div style={{ fontSize: 10.5, fontStyle: 'italic', color: 'var(--color-text-muted)', marginBottom: 2 }}>
-                    {diseaseDetails.scientificName}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                    <IconCalendar size={12} stroke={2} />
-                    <span>{formatDate(record.date)}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <IconMapPin size={12} stroke={2} color="var(--color-primary)" />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {record.locationName || 'Finca Cacaotera'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+      {/* Lista de Tarjetas Material 3 Filled Expressive */}
+      <div className="flex flex-col gap-3">
+        {renderHistoryContent()}
       </div>
 
-      {/* ══ FICHA TÉCNICA DETALLADA - PANTALLA COMPLETA ══════════════════ */}
-      {selectedRecord && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-          onClick={handleCloseDetail}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
+      {/* ══ FICHA TÉCNICA DETALLADA CON BASE UI DIALOG & TAILWIND ══ */}
+      <Dialog.Root open={Boolean(selectedRecord)} onOpenChange={(open) => !open && handleCloseDetail()}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-backdrop-in transition-opacity duration-200 data-[ending-style]:opacity-0" />
+          <Dialog.Popup
+            ref={popupRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             style={{
-              width: '100%',
-              maxWidth: 520,
-              height: '100dvh',
-              maxHeight: '100dvh',
-              backgroundColor: 'var(--color-bg-card)',
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              padding: '20px 20px max(36px, env(safe-area-inset-bottom, 36px))',
-              boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-              border: 'none',
-              animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+              transform: sheetTranslateY > 0 ? `translate3d(0, ${sheetTranslateY}px, 0)` : undefined,
+              transition: isSheetDragging ? 'none' : 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
             }}
+            className="fixed inset-x-0 bottom-0 max-w-2xl mx-auto w-full max-h-[92dvh] bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] rounded-t-3xl shadow-2xl z-50 overflow-y-auto p-5 pb-10 flex flex-col gap-4 border-none animate-slide-up-sheet data-[ending-style]:translate-y-full will-change-transform"
           >
-            {/* Tirador del Bottom Sheet */}
-            <div style={{
-              width: 40,
-              height: 4.5,
-              borderRadius: 3,
-              backgroundColor: 'var(--color-border)',
-              margin: '0 auto 2px',
-              opacity: 0.8
-            }} />
+            {selectedRecord && (
+              <>
+                {/* Zona de Arrastre Táctil / Handle Superior */}
+                <div
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  className="w-full pt-1 pb-1 -mt-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
+                >
+                  <div className="w-12 h-1.5 rounded-full bg-[var(--color-surface-container-highest)] mx-auto mb-2.5 transition-colors active:bg-[var(--color-text-muted)]" />
 
-            {/* Header del Bottom Sheet */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-                  FICHA TÉCNICA {selectedRecord.id || 'CS-CAMPO'}
-                </span>
-                <h3 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: 'var(--color-text-dark)' }}>
-                  {selectedRecord.disease}
-                </h3>
-              </div>
-              <button
-                onClick={handleCloseDetail}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-bg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid var(--color-border)',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-muted)'
-                }}
-              >
-                <IconX size={18} stroke={2} />
-              </button>
-            </div>
-
-            {/* Fotografía de Campo en Alta Resolución con Certeza IA */}
-            <div
-              style={{
-                width: '100%',
-                height: 220,
-                borderRadius: 20,
-                overflow: 'hidden',
-                position: 'relative',
-                backgroundColor: '#000',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              {selectedRecord.photo || selectedRecord.image ? (
-                <img
-                  src={selectedRecord.photo || selectedRecord.image}
-                  alt={selectedRecord.disease}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#0B140E' }}
-                />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
-                  <HistoryMiniSVG type={selectedRecord.disease} />
+                  {/* Header del Bottom Sheet */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] block">
+                        FICHA TÉCNICA {selectedRecord.id || 'CS-CAMPO'}
+                      </span>
+                      <Dialog.Title className="text-xl font-extrabold text-[var(--color-text-dark)] m-0">
+                        {selectedRecord.disease}
+                      </Dialog.Title>
+                    </div>
+                    <Dialog.Close className="w-9 h-9 rounded-full bg-[var(--color-surface-container-high)] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center text-[var(--color-text-dark)] transition-colors cursor-pointer border-none p-0">
+                      <IconX size={18} stroke={2} />
+                    </Dialog.Close>
+                  </div>
                 </div>
-              )}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  backgroundColor: 'rgba(0,0,0,0.75)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#10B981',
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 800
-                }}
-              >
-                {selectedRecord.certainty}% Certeza IA
-              </div>
-            </div>
 
-            {/* Metadatos en cuadrícula Material 3 Filled (sin sombras) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Finca</span>
-                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-text-dark)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedRecord.locationName || 'Finca Cacaotera'}
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Productor</span>
-                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-text-dark)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedRecord.farmer || 'Técnico de Campo'}
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fecha de Escaneo</span>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--color-text-dark)', marginTop: 3 }}>
-                  {formatDate(selectedRecord.date)}
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: '12px 14px', border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severidad</span>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: selectedRecord.disease === 'Sano' ? '#16A34A' : '#EF4444', marginTop: 3 }}>
-                  {selectedRecord.disease === 'Sano' ? 'Ninguna' : 'Crítica / Alta'}
-                </div>
-              </div>
-            </div>
-
-            {/* Coordenadas GPS (Color Pizarra/Neutral Suave y Descansado) */}
-            {selectedRecord.lat && selectedRecord.lng && (
-              <a
-                href={`https://www.google.com/maps?q=${selectedRecord.lat},${selectedRecord.lng}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: 16,
-                  backgroundColor: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  color: '#475569',
-                  textDecoration: 'none',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  transition: 'background-color 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <IconMapPin size={16} stroke={2} color="#64748B" />
-                  <span style={{ color: 'var(--color-text-dark)', fontWeight: 700 }}>
-                    GPS: {selectedRecord.lat.toFixed(4)}, {selectedRecord.lng.toFixed(4)}
-                  </span>
-                </div>
-                <IconExternalLink size={15} stroke={2} color="#94A3B8" />
-              </a>
-            )}
-
-            {/* Botón Disparador del Protocolo Fitosanitario (Dialog / Popover) */}
-            {DISEASE_CATALOG[selectedRecord.disease] && (
-              <div style={{ position: 'relative' }}>
+                {/* Fotografía de Campo en Alta Resolución con Certeza IA (Click para Pantalla Completa) */}
                 <button
                   type="button"
-                  onClick={() => setShowProtocolDialog(prev => !prev)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: 16,
-                    backgroundColor: showProtocolDialog ? 'rgba(44, 94, 59, 0.08)' : 'var(--color-bg)',
-                    border: showProtocolDialog ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    color: 'var(--color-text-dark)',
-                    transition: 'all 0.2s ease'
-                  }}
+                  onClick={() => (selectedRecord.image || selectedRecord.photo) && setFullscreenImage(selectedRecord.image || selectedRecord.photo)}
+                  aria-label={selectedRecord.image || selectedRecord.photo ? "Ver fotografía en pantalla completa" : undefined}
+                  className={`w-full block p-0 text-left h-56 rounded-3xl overflow-hidden relative bg-[var(--color-surface-container)] border-none select-none ${
+                    selectedRecord.image || selectedRecord.photo ? 'cursor-pointer group' : ''
+                  }`}
+                  title={selectedRecord.image || selectedRecord.photo ? "Toca para ver en pantalla completa" : undefined}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <IconShieldExclamation size={18} stroke={2} color="var(--color-primary)" />
-                    <span style={{ fontSize: 13, fontWeight: 800 }}>Protocolo de Manejo Recomendado</span>
+                  {selectedRecord.image || selectedRecord.photo ? (
+                    <>
+                      <img
+                        src={selectedRecord.image || selectedRecord.photo}
+                        alt={selectedRecord.disease}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
+                      <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full flex items-center gap-1.5 text-[11px] font-semibold opacity-90 group-hover:opacity-100 transition-opacity">
+                        <IconMaximize size={14} stroke={2.2} />
+                        <span>Ver completa</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-[var(--color-text-muted)] gap-2">
+                      <div className="w-20 h-20">
+                        <CocoaPodSVG type={selectedRecord.disease} />
+                      </div>
+                      <span className="text-[11px] font-semibold">Registro sin imagen directa de cámara</span>
+                    </div>
+                  )}
+
+                  {/* Badge Flotante de Certeza */}
+                  <div className="absolute top-3 right-3 bg-[var(--color-primary)] text-[var(--color-on-primary)] px-3 py-1.5 rounded-full text-xs font-bold shadow-md flex items-center gap-1.5 border-none">
+                    <IconSparkles size={14} stroke={2.5} />
+                    <span>{selectedRecord.confidence || selectedRecord.certainty || 90}% Certeza IA</span>
                   </div>
-                  <IconInfoCircle size={17} stroke={2} color="var(--color-primary)" />
                 </button>
 
-                {/* Diálogo Flotante / Tooltip Enriquecido de Pasos del Protocolo */}
-                {showProtocolDialog && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      backgroundColor: 'var(--color-bg-card)',
-                      borderRadius: 18,
-                      padding: '16px 18px',
-                      border: '1.5px solid var(--color-border)',
-                      boxShadow: '0 10px 28px rgba(0,0,0,0.12)',
-                      animation: 'fadeIn 0.2s ease-out'
-                    }}
+                {/* Metadata Grid (Fecha, Parcela, Severidad) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowExactDate(prev => !prev)}
+                    className="bg-[var(--color-surface-container)] dark:bg-[var(--color-surface-container-high)] p-3.5 rounded-2xl border-none text-left cursor-pointer hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98] transition-all select-none group"
+                    title="Toca para alternar entre fecha y formato relativo"
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-primary)' }}>
-                        Pasos Técnicos Sugeridos
+                    <div className="flex items-center justify-between text-[var(--color-text-muted)] text-[11px] font-semibold uppercase tracking-wider">
+                      <span className="flex items-center gap-1.5">
+                        <IconCalendar size={13} stroke={2} /> Captura
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowProtocolDialog(false)}
-                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 2 }}
-                      >
-                        <IconX size={15} stroke={2} />
-                      </button>
+                      <span className="text-[10px] text-[var(--color-primary)] font-medium lowercase opacity-70 group-hover:opacity-100 transition-opacity">
+                        {showExactDate ? 'relativo' : 'exacta'}
+                      </span>
                     </div>
+                    <div
+                      key={showExactDate ? 'exact' : 'smart'}
+                      className="text-xs font-bold text-[var(--color-text-dark)] mt-1 animate-fade-in transition-opacity duration-200"
+                    >
+                      {formatSmartDate(selectedRecord.date, showExactDate)}
+                    </div>
+                  </button>
 
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                      {(DISEASE_CATALOG[selectedRecord.disease]?.steps || []).map((step, idx) => (
-                        <li key={idx} style={{ marginBottom: 6 }}>{step}</li>
-                      ))}
-                    </ul>
+                  <div className="bg-[var(--color-surface-container)] dark:bg-[var(--color-surface-container-high)] p-3.5 rounded-2xl border-none">
+                    <div className="flex items-center gap-1.5 text-[var(--color-text-muted)] text-[11px] font-semibold uppercase">
+                      <IconPlant2 size={13} stroke={2} /> Parcela / Fundo
+                    </div>
+                    <div className="text-xs font-bold text-[var(--color-text-dark)] mt-1 truncate">
+                      {selectedRecord.location || selectedRecord.locationName || 'Finca Principal'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coordenadas GPS como Textlink Compacto */}
+                {selectedRecord.lat && selectedRecord.lng && (
+                  <div className="flex items-center justify-start px-0.5 -mt-0.5">
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedRecord.lat},${selectedRecord.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg text-[12px] font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-container)]/50 active:scale-95 transition-all no-underline"
+                      title="Abrir ubicación en Google Maps"
+                    >
+                      <IconMapPin size={14} stroke={2.2} />
+                      <span>GPS: {Number(selectedRecord.lat).toFixed(4)}, {Number(selectedRecord.lng).toFixed(4)}</span>
+                      <IconExternalLink size={12} stroke={2.2} className="opacity-70" />
+                    </a>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Receta Agronómica emitida si existe */}
-            {selectedRecord.prescription && (
-              <div style={{ backgroundColor: 'var(--color-bg)', borderRadius: 16, padding: 14, border: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Receta Agronómica Emitida</span>
-                <p style={{ fontSize: 12, color: 'var(--color-text-dark)', margin: '4px 0 0', lineHeight: 1.5 }}>
-                  {selectedRecord.prescription}
-                </p>
-              </div>
-            )}
+                {/* Protocolo de Manejo Recomendado (Trigger Compacto con Tooltip y Dialog) */}
+                {DISEASE_CATALOG[selectedRecord.disease]?.steps && (
+                  <Tooltip.Root>
+                    <Tooltip.Trigger
+                      type="button"
+                      onClick={() => setShowStepsDialog(true)}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[var(--color-surface-container)] hover:bg-[var(--color-surface-container-high)] text-[var(--color-text-dark)] transition-all cursor-pointer border-none active:scale-[0.99] select-none"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[var(--color-primary-container)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+                          <IconShieldExclamation size={18} stroke={2.2} />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-xs font-bold block leading-tight">Pasos Técnicos Sugeridos</span>
+                          <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Ver protocolo fitosanitario recomendado</span>
+                        </div>
+                      </div>
+                      <IconChevronRight size={17} stroke={2} className="text-[var(--color-text-muted)]" />
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Positioner side="top" sideOffset={6}>
+                        <Tooltip.Popup className="bg-[var(--color-surface-container-highest)] text-[var(--color-text-dark)] px-3 py-1.5 rounded-xl text-xs font-semibold shadow-lg border-none z-50">
+                          Toca para consultar los pasos de manejo
+                        </Tooltip.Popup>
+                      </Tooltip.Positioner>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                )}
 
-            {/* Botón de Cierre Bottom Sheet */}
-            <button
-              type="button"
-              onClick={handleCloseDetail}
-              style={{
-                width: '100%',
-                padding: '16px',
-                borderRadius: 9999,
-                backgroundColor: 'var(--color-primary)',
-                color: '#FFF',
-                fontSize: 14,
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: 'none',
-                transition: 'transform 0.1s ease',
-                marginTop: 4
-              }}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              Cerrar Ficha
-            </button>
-          </div>
-        </div>
+                {/* Receta Agronómica emitida si existe */}
+                {selectedRecord.prescription && (
+                  <div className="bg-[var(--color-tertiary-container)] text-[var(--color-on-tertiary-container)] rounded-2xl p-4 border-none">
+                    <span className="text-[11px] font-bold uppercase tracking-wide">
+                      Receta Agronómica Emitida
+                    </span>
+                    <p className="text-xs mt-1 leading-relaxed">
+                      {selectedRecord.prescription}
+                    </p>
+                  </div>
+                )}
+
+                {/* Botón de Cierre Bottom Sheet */}
+                <Dialog.Close className="w-full py-3.5 px-4 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:scale-[0.99] text-[var(--color-on-primary)] font-bold text-sm tracking-wide transition-all shadow-md cursor-pointer border-none flex items-center justify-center gap-2 text-center mt-2">
+                  <IconArrowLeft size={18} stroke={2.2} />
+                  <span>Regresar</span>
+                </Dialog.Close>
+              </>
+            )}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* ══ DIALOG MODAL DE PASOS TÉCNICOS SUGERIDOS ══ */}
+      {selectedRecord && (
+        <Dialog.Root open={showStepsDialog} onOpenChange={setShowStepsDialog}>
+          <Dialog.Portal>
+            <Dialog.Backdrop className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60 animate-fade-in" />
+            <Dialog.Popup className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] rounded-3xl p-5 shadow-2xl z-60 flex flex-col gap-4 border-none max-h-[85dvh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[var(--color-primary)]">
+                  <IconShieldExclamation size={20} stroke={2.2} />
+                  <Dialog.Title className="text-sm font-extrabold uppercase tracking-wider text-[var(--color-text-dark)] m-0">
+                    Pasos Técnicos Sugeridos
+                  </Dialog.Title>
+                </div>
+                <Dialog.Close className="w-8 h-8 rounded-full bg-[var(--color-surface-container-high)] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center text-[var(--color-text-dark)] border-none cursor-pointer transition-colors p-0">
+                  <IconX size={16} stroke={2} />
+                </Dialog.Close>
+              </div>
+
+              <div className="bg-[var(--color-primary-container)] text-[var(--color-on-primary-container)] p-4 rounded-2xl">
+                <span className="text-[11px] font-bold uppercase tracking-wider block mb-2 text-[var(--color-primary)]">
+                  {selectedRecord.disease}
+                </span>
+                <ul className="m-0 pl-4 text-xs space-y-2 leading-relaxed text-[var(--color-on-primary-container)]">
+                  {(DISEASE_CATALOG[selectedRecord.disease]?.steps || []).map((step) => (
+                  <li key={step} className="font-medium">{step}</li>
+                ))}
+                </ul>
+              </div>
+
+              <Dialog.Close className="w-full py-3.5 rounded-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-on-primary)] font-bold text-xs cursor-pointer border-none text-center transition-transform active:scale-[0.99]">
+                Entendido
+              </Dialog.Close>
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
       )}
+
+      {/* ══ DIALOG DE FOTO EN PANTALLA COMPLETA (LIGHTBOX) ══ */}
+      <Dialog.Root open={Boolean(fullscreenImage)} onOpenChange={(open) => !open && setFullscreenImage(null)}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 bg-black/90 backdrop-blur-md z-60 animate-fade-in cursor-pointer" />
+          <Dialog.Popup className="fixed inset-0 z-60 flex flex-col items-center justify-center p-4 pointer-events-none">
+            <div className="relative max-w-3xl w-full max-h-[92dvh] flex flex-col items-center pointer-events-auto">
+              <Dialog.Close className="absolute top-2 right-2 z-10 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-black/80 flex items-center justify-center cursor-pointer border-none transition-transform active:scale-95 shadow-lg">
+                <IconX size={20} stroke={2.5} />
+              </Dialog.Close>
+              <img
+                src={fullscreenImage}
+                alt="Fotografía en pantalla completa"
+                className="max-w-full max-h-[84dvh] object-contain rounded-2xl shadow-2xl"
+              />
+              {selectedRecord && (
+                <div className="mt-3 px-4 py-1.5 rounded-full bg-black/60 text-white text-xs font-semibold backdrop-blur-sm">
+                  {selectedRecord.disease} &bull; {selectedRecord.location || selectedRecord.locationName || 'Finca Principal'}
+                </div>
+              )}
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

@@ -2,9 +2,6 @@
 // Integración directa y limpia con la API de IA en la nube (Render & Supabase)
 
 export const BACKEND_URL = 'https://cocoashield-backend.onrender.com';
-export const updateBackendIp = () => {};
-export const clearDatabase = () => {};
-export const syncPendingRecords = async () => [];
 
 // ─── Catálogo de Enfermedades y Protocolos Fitosantitarios ─────────────────────
 export const DISEASE_CATALOG = {
@@ -104,37 +101,35 @@ export const getHistory = async () => {
 };
 
 /**
+ * Resuelve nombre de ubicación y coordenadas de forma modular.
+ */
+const resolveLocationCoords = (farmOrLocation, gpsObj) => {
+  const isStr = typeof farmOrLocation === 'string';
+  const farmName = isStr ? farmOrLocation.trim() : farmOrLocation?.name;
+  const locationName = (farmName && farmName !== 'Finca Cacaotera')
+    ? farmName
+    : (gpsObj?.name || 'Finca Cacaotera');
+
+  const lat = gpsObj?.lat ?? farmOrLocation?.lat ?? -1.0234;
+  const lng = gpsObj?.lng ?? farmOrLocation?.lng ?? -77.5432;
+
+  return { locationName, lat, lng };
+};
+
+/**
  * Ejecuta el diagnóstico de Inteligencia Artificial en la nube.
  */
 export const runOnlineDiagnosis = async (imageBase64, farmOrLocation, farmerName, gpsObj) => {
-  let locationName = 'Finca Cacaotera';
-  let lat = -1.0234;
-  let lng = -77.5432;
-  let farmer = farmerName || localStorage.getItem('cocoashield_farmer_name') || 'Trabajador de Campo';
-
-  if (typeof farmOrLocation === 'string' && farmOrLocation.trim()) {
-    locationName = farmOrLocation;
-  } else if (farmOrLocation && typeof farmOrLocation === 'object') {
-    locationName = farmOrLocation.name || locationName;
-    if (farmOrLocation.lat) lat = farmOrLocation.lat;
-    if (farmOrLocation.lng) lng = farmOrLocation.lng;
-  }
-
-  if (gpsObj && typeof gpsObj === 'object') {
-    if (gpsObj.lat) lat = gpsObj.lat;
-    if (gpsObj.lng) lng = gpsObj.lng;
-    if (locationName === 'Finca Cacaotera' && gpsObj.name) {
-      locationName = gpsObj.name;
-    }
-  }
+  const { locationName, lat, lng } = resolveLocationCoords(farmOrLocation, gpsObj);
+  const farmer = farmerName || localStorage.getItem('cocoashield_farmer_name') || 'Trabajador de Campo';
 
   const payload = {
     image: imageBase64,
     location: locationName,
     region: 'Napo',
-    farmer: farmer,
-    lat: lat,
-    lng: lng,
+    farmer,
+    lat,
+    lng,
     geminiKey: localStorage.getItem('cocoashield_gemini_key') || undefined
   };
 

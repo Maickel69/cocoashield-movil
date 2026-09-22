@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import DiagnosisTab from "./components/DiagnosisTab";
 import HistoryTab from "./components/HistoryTab";
 import ConfigTab from "./components/ConfigTab";
@@ -45,6 +45,7 @@ export default function App() {
   const [currentUser, setCurrentUser]     = useState(null);
   const [authLoading, setAuthLoading]     = useState(true);
   const [history, setHistory]             = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [activeTab, setActiveTab]         = useState("diagnostico");
   const [backendStatus, setBackendStatus] = useState("checking");
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -61,6 +62,8 @@ export default function App() {
   );
   const [currentGPS, setCurrentGPS] = useState({ name: "Obteniendo ubicacion...", lat: 0, lng: 0 });
   const [deviceBattery, setDeviceBattery] = useState(null);
+  const farmNameRef = useRef(farmName);
+  const cameraTriggerRef = useRef(null);
 
   // Cargar sesión persistente de trabajador
   useEffect(() => {
@@ -100,24 +103,40 @@ export default function App() {
     document.body.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
-  useEffect(() => { localStorage.setItem("cocoashield_farmer_name", farmerName); }, [farmerName]);
-  useEffect(() => { localStorage.setItem("cocoashield_farm_name", farmName); }, [farmName]);
+  useEffect(() => {
+    localStorage.setItem("cocoashield_farmer_name", farmerName);
+    localStorage.setItem("cocoashield_farm_name", farmName);
+    farmNameRef.current = farmName;
+  }, [farmerName, farmName]);
 
   useEffect(() => {
     let active = true;
+    let batteryInstance = null;
+    const handleLevelChange = () => {
+      if (active && batteryInstance) {
+        setDeviceBattery(Math.round(batteryInstance.level * 100));
+      }
+    };
+
     const fetchBattery = async () => {
       try {
         if (navigator.getBattery) {
-          const battery = await navigator.getBattery();
-          if (active) setDeviceBattery(Math.round(battery.level * 100));
-          battery.addEventListener("levelchange", () => {
-            if (active) setDeviceBattery(Math.round(battery.level * 100));
-          });
+          batteryInstance = await navigator.getBattery();
+          if (active) {
+            setDeviceBattery(Math.round(batteryInstance.level * 100));
+            batteryInstance.addEventListener("levelchange", handleLevelChange);
+          }
         }
       } catch (_) {}
     };
     fetchBattery();
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+      if (batteryInstance) {
+        batteryInstance.removeEventListener("levelchange", handleLevelChange);
+      }
+    };
   }, []);
 
   const fetchRealGPS = useCallback(() => {
@@ -127,10 +146,10 @@ export default function App() {
         const acc = Math.round(pos.coords.accuracy);
         setCurrentGPS({ name: `Ubicacion GPS (+-${acc}m)`, lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
-      () => { setCurrentGPS({ name: farmName, lat: 0, lng: 0 }); },
+      () => { setCurrentGPS({ name: farmNameRef.current, lat: 0, lng: 0 }); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [farmName]);
+  }, []);
 
   const checkBackend = useCallback(async () => {
     try {
@@ -145,7 +164,10 @@ export default function App() {
     if (!currentUser) return;
     fetchRealGPS();
     checkBackend();
-    getHistory().then(setHistory);
+    setHistoryLoading(true);
+    getHistory()
+      .then(setHistory)
+      .finally(() => setHistoryLoading(false));
   }, [currentUser, fetchRealGPS, checkBackend]);
 
   useEffect(() => {
@@ -185,47 +207,8 @@ export default function App() {
     setIsDetailOpen(Boolean(record));
   };
 
-  const renderTabContent = () => (
-    <>
-      {activeTab === "diagnostico" && (
-        <DiagnosisTab
-          onSaveDiagnosis={handleSaveDiagnosis}
-          onRunOnlineDiagnosis={handleRunOnlineDiagnosis}
-          currentGPS={currentGPS}
-          addLog={() => {}}
-          recentHistory={history}
-          onNavigateTab={setActiveTab}
-          currentUser={currentUser}
-          onSelectRecord={handleSelectRecord}
-        />
-      )}
-      {(activeTab === "historial" || selectedRecord) && (
-        <div style={{ display: activeTab === "historial" ? "block" : "none" }}>
-          <HistoryTab
-            history={history}
-            isOnline={backendStatus === "online"}
-            onSyncNow={() => getHistory().then(setHistory)}
-            unsyncedCount={0}
-            onDetailOpen={setIsDetailOpen}
-            selectedRecord={selectedRecord}
-            onSelectRecord={handleSelectRecord}
-          />
-        </div>
-      )}
-      {activeTab === "configuracion" && !selectedRecord && (
-        <ConfigTab
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          farmerName={farmerName} setFarmerName={setFarmerName}
-          farmName={farmName} setFarmName={setFarmName}
-          isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
-          currentGPS={currentGPS} fetchRealGPS={fetchRealGPS}
-          backendStatus={backendStatus}
-          onBack={setActiveTab}
-        />
-      )}
-    </>
-  );
+  const TABS = ["diagnostico", "historial", "configuracion"];
+  const currentTabIndex = Math.max(0, TABS.indexOf(activeTab));
 
   if (authLoading) {
     return (
@@ -248,21 +231,91 @@ export default function App() {
   // Si no está autenticado, mostrar Login
   if (!currentUser) {
     return (
-      <div className="mobile-app-root">
+      <div className="flex flex-col w-full h-[100dvh] min-h-[100dvh] bg-[var(--color-bg)] relative overflow-hidden mx-auto">
         <MobileLoginPage onLoginSuccess={handleLoginSuccess} />
       </div>
     );
   }
 
   return (
-    <div className="mobile-app-root">
+    <div className={`flex flex-col w-full h-[100dvh] min-h-[100dvh] ${activeTab === "configuracion" ? "bg-white dark:bg-[var(--color-bg)]" : "bg-[var(--color-bg)]"} relative overflow-hidden mx-auto transition-colors duration-200`}>
       <StatusDot backendStatus={backendStatus} />
-      <div className="mobile-screen">
-        {renderTabContent()}
+
+      {/* Contenedor Viewport con Track Horizontal para Transición Slide */}
+      <div className="flex-1 w-full max-w-[680px] mx-auto overflow-hidden relative">
+        <div
+          className="flex w-[300%] h-full transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)] will-change-transform"
+          style={{
+            transform: `translate3d(-${currentTabIndex * (100 / 3)}%, 0, 0)`
+          }}
+        >
+          {/* Pestaña 0: Diagnóstico */}
+          <div
+            className="w-1/3 h-full shrink-0 overflow-y-auto overflow-x-hidden pt-[max(18px,env(safe-area-inset-top,18px))] px-4 pb-[100px] md:px-6 md:pb-[110px] touch-pan-y"
+            aria-hidden={activeTab !== "diagnostico"}
+          >
+            <DiagnosisTab
+              onSaveDiagnosis={handleSaveDiagnosis}
+              onRunOnlineDiagnosis={handleRunOnlineDiagnosis}
+              currentGPS={currentGPS}
+              addLog={() => {}}
+              recentHistory={history}
+              onNavigateTab={setActiveTab}
+              currentUser={currentUser}
+              onSelectRecord={handleSelectRecord}
+              onRegisterCameraTrigger={(trigger) => { cameraTriggerRef.current = trigger; }}
+            />
+          </div>
+
+          {/* Pestaña 1: Historial Fitosanitario */}
+          <div
+            className="w-1/3 h-full shrink-0 overflow-y-auto overflow-x-hidden pt-[max(18px,env(safe-area-inset-top,18px))] px-4 pb-[100px] md:px-6 md:pb-[110px] touch-pan-y"
+            aria-hidden={activeTab !== "historial"}
+          >
+            <HistoryTab
+              history={history}
+              isLoading={historyLoading}
+              isOnline={backendStatus === "online"}
+              onSyncNow={async () => {
+                setHistoryLoading(true);
+                try {
+                  const data = await getHistory();
+                  setHistory(data);
+                } finally {
+                  setHistoryLoading(false);
+                }
+              }}
+              unsyncedCount={0}
+              onDetailOpen={setIsDetailOpen}
+              selectedRecord={selectedRecord}
+              onSelectRecord={handleSelectRecord}
+            />
+          </div>
+
+          {/* Pestaña 2: Mi Cuenta / Configuración (Fondo Blanco Puro) */}
+          <div
+            className="w-1/3 h-full shrink-0 overflow-y-auto overflow-x-hidden pt-[max(18px,env(safe-area-inset-top,18px))] px-4 pb-[100px] md:px-6 md:pb-[110px] touch-pan-y bg-white dark:bg-[var(--color-bg)]"
+            aria-hidden={activeTab !== "configuracion"}
+          >
+            <ConfigTab
+              currentUser={currentUser}
+              onLogout={handleLogout}
+              farmerName={farmerName}
+              setFarmerName={setFarmerName}
+              farmName={farmName}
+              setFarmName={setFarmName}
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              currentGPS={currentGPS}
+              fetchRealGPS={fetchRealGPS}
+              backendStatus={backendStatus}
+            />
+          </div>
+        </div>
       </div>
       {!isDetailOpen && (
-        <div className="mobile-bottom-nav">
-          <div className="mobile-nav-island">
+        <div className="fixed bottom-0 inset-x-0 w-full max-w-[680px] mx-auto px-3 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2 flex items-center justify-between gap-2.5 z-40 pointer-events-none md:max-w-[680px] md:px-4 md:pb-[max(16px,env(safe-area-inset-bottom,16px))]">
+          <div className="flex-1 bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] rounded-full border-none flex items-center justify-between p-1.5 h-16 shadow-[0_8px_32px_rgba(18,30,23,0.08)] pointer-events-auto">
             {[
               { id: "diagnostico",   icon: <IconCamera size={20} stroke={1.8} />,   label: "Diagnóstico" },
               { id: "historial",     icon: <IconHistory size={20} stroke={1.8} />,  label: "Historial" },
@@ -271,30 +324,31 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`mobile-nav-btn ${activeTab === tab.id ? "active" : ""}`}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold h-[52px] px-3 py-2 cursor-pointer transition-all duration-200 select-none border-none bg-transparent ${
+                  activeTab === tab.id
+                    ? "bg-[var(--color-primary-container)] text-[var(--color-primary)]"
+                    : "text-[var(--color-text-muted)] hover:text-stone-800 dark:hover:text-stone-200"
+                }`}
               >
-                <span className="mobile-nav-icon">{tab.icon}</span>
-                <span className="mobile-nav-label">{tab.label}</span>
+                <span className={`flex items-center justify-center transition-transform duration-200 ${activeTab === tab.id ? "scale-105" : ""}`}>
+                  {tab.icon}
+                </span>
+                <span className="text-[11px] font-semibold whitespace-nowrap">{tab.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Botón Circular de Acción Principal en la Esquina (Cámara / Captura) */}
+          {/* Botón Circular de Acción Principal (Cámara / Captura FAB) */}
           <button
             type="button"
             onClick={() => {
               setActiveTab('diagnostico');
-              setTimeout(() => {
-                const fileInputs = document.querySelectorAll('input[type="file"]');
-                if (fileInputs && fileInputs.length > 0) {
-                  fileInputs[0].click();
-                }
-              }, 50);
+              cameraTriggerRef.current?.();
             }}
-            className="floating-action-fab"
+            className="w-16 h-16 min-w-16 min-h-16 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center cursor-pointer shadow-[0_12px_28px_rgba(30,70,32,0.35)] transition-all hover:bg-[var(--color-primary-hover)] active:scale-90 shrink-0 ml-1.5 pointer-events-auto select-none border-none p-0"
             title="Tomar Foto / Analizar Mazorca"
           >
-            <IconCamera size={26} stroke={2} />
+            <IconCamera size={28} stroke={2.4} />
           </button>
         </div>
       )}
