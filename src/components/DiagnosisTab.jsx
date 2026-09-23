@@ -25,15 +25,15 @@ const DEFAULT_HERO_PHOTOS = [
 
 const FAN_LAYOUTS = {
   3: [
-    { angle: '-rotate-[14deg]', hoverAngle: 'group-hover:-rotate-[19deg]', offset: '-translate-x-[calc(50%+13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' },
-    { angle: 'rotate-0',        hoverAngle: 'group-hover:-translate-y-1',  offset: '-translate-x-1/2',              top: 'top-0',   z: 'z-[2]', focus: 'object-[center_18%]' },
-    { angle: 'rotate-[14deg]',  hoverAngle: 'group-hover:rotate-[19deg]',  offset: '-translate-x-[calc(50%-13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' }
+    { slotId: 'fan3-left',   angle: '-rotate-[14deg]', hoverAngle: 'group-hover:-rotate-[19deg]', offset: '-translate-x-[calc(50%+13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' },
+    { slotId: 'fan3-center', angle: 'rotate-0',        hoverAngle: 'group-hover:-translate-y-1',  offset: '-translate-x-1/2',              top: 'top-0',   z: 'z-[2]', focus: 'object-[center_18%]' },
+    { slotId: 'fan3-right',  angle: 'rotate-[14deg]',  hoverAngle: 'group-hover:rotate-[19deg]',  offset: '-translate-x-[calc(50%-13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' }
   ],
   4: [
-    { angle: '-rotate-[18deg]', hoverAngle: 'group-hover:-rotate-[23deg]', offset: '-translate-x-[calc(50%+16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' },
-    { angle: '-rotate-[6deg]',  hoverAngle: 'group-hover:-rotate-[9deg]',  offset: '-translate-x-[calc(50%+5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
-    { angle: 'rotate-[6deg]',   hoverAngle: 'group-hover:rotate-[9deg]',   offset: '-translate-x-[calc(50%-5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
-    { angle: 'rotate-[18deg]',  hoverAngle: 'group-hover:rotate-[23deg]',  offset: '-translate-x-[calc(50%-16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' }
+    { slotId: 'fan4-outer-left',  angle: '-rotate-[18deg]', hoverAngle: 'group-hover:-rotate-[23deg]', offset: '-translate-x-[calc(50%+16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' },
+    { slotId: 'fan4-inner-left',  angle: '-rotate-[6deg]',  hoverAngle: 'group-hover:-rotate-[9deg]',  offset: '-translate-x-[calc(50%+5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
+    { slotId: 'fan4-inner-right', angle: 'rotate-[6deg]',   hoverAngle: 'group-hover:rotate-[9deg]',   offset: '-translate-x-[calc(50%-5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
+    { slotId: 'fan4-outer-right', angle: 'rotate-[18deg]',  hoverAngle: 'group-hover:rotate-[23deg]',  offset: '-translate-x-[calc(50%-16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' }
   ]
 };
 
@@ -318,18 +318,17 @@ export default function DiagnosisTab({
           {/* Tarjeta Principal de Escaneo (Diseño con Fotos Detrás del Botón de Cámara) */}
           <div className="p-6 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] border-none shadow-[0_2px_16px_rgba(18,30,23,0.04)] dark:shadow-none flex flex-col items-center text-center gap-4.5">
             {/* Clúster Visual: Stack Dinámico de 4 o 3 Naipes con Eje Corto */}
-            <div
+            <button
+              type="button"
               onClick={handleOpenCamera}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCamera(); }}
-              className="relative w-[160px] h-[112px] mx-auto cursor-pointer select-none group flex items-center justify-center"
+              className="relative w-[160px] h-[112px] mx-auto cursor-pointer select-none group flex items-center justify-center border-none bg-transparent p-0 focus:outline-none"
               title="Toma una foto o sube desde la galería"
+              aria-label="Abrir cámara para diagnóstico"
             >
               {/* Naipes adaptativos (4 cartas habitualmente, 3 de vez en cuando) */}
               {(FAN_LAYOUTS[cardCount] || FAN_LAYOUTS[4]).map((cfg, idx) => (
                 <div
-                  key={idx}
+                  key={cfg.slotId}
                   style={{ transformOrigin: '50% 102%' }}
                   className={`w-[70px] h-[82px] rounded-2xl p-[2px] bg-white dark:bg-stone-700 shadow-md absolute left-1/2 ${cfg.offset} ${cfg.top} ${cfg.angle} ${cfg.hoverAngle} ${cfg.z} transition-all duration-500 ease-out will-change-transform`}
                 >
@@ -352,7 +351,7 @@ export default function DiagnosisTab({
               <div className="w-[64px] h-[64px] rounded-full bg-white dark:bg-stone-800 shadow-[0_8px_20px_rgba(0,0,0,0.15)] dark:shadow-[0_8px_20px_rgba(0,0,0,0.6)] border-[2.5px] border-white dark:border-stone-700 flex items-center justify-center absolute left-1/2 -translate-x-1/2 bottom-0 z-[10] transition-all duration-200 group-hover:scale-105 active:scale-95">
                 <IconCamera size={28} stroke={2.1} className="text-[#1E4D2B] dark:text-[#7ED4A2]" />
               </div>
-            </div>
+            </button>
 
             {/* Tipografía Fitosanitaria */}
             <div className="flex flex-col gap-1.5 max-w-[280px]">
