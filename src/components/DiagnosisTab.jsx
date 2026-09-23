@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   IconCamera,
   IconFolderOpen
@@ -17,8 +17,25 @@ import logo from '../assets/logo.png';
 const DEFAULT_HERO_PHOTOS = [
   'https://images.unsplash.com/photo-1541832676-9b763b0239ab?auto=format&fit=crop&w=300&q=80',
   'https://images.unsplash.com/photo-1606041008023-472dfb5e530f?auto=format&fit=crop&w=300&q=80',
-  'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=300&q=80'
+  'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1579613832125-5d34a13ffe0a?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=300&q=80'
 ];
+
+const FAN_LAYOUTS = {
+  3: [
+    { angle: '-rotate-[14deg]', hoverAngle: 'group-hover:-rotate-[19deg]', offset: '-translate-x-[calc(50%+13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' },
+    { angle: 'rotate-0',        hoverAngle: 'group-hover:-translate-y-1',  offset: '-translate-x-1/2',              top: 'top-0',   z: 'z-[2]', focus: 'object-[center_18%]' },
+    { angle: 'rotate-[14deg]',  hoverAngle: 'group-hover:rotate-[19deg]',  offset: '-translate-x-[calc(50%-13px)]', top: 'top-1',   z: 'z-[1]', focus: 'object-[center_20%]' }
+  ],
+  4: [
+    { angle: '-rotate-[18deg]', hoverAngle: 'group-hover:-rotate-[23deg]', offset: '-translate-x-[calc(50%+16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' },
+    { angle: '-rotate-[6deg]',  hoverAngle: 'group-hover:-rotate-[9deg]',  offset: '-translate-x-[calc(50%+5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
+    { angle: 'rotate-[6deg]',   hoverAngle: 'group-hover:rotate-[9deg]',   offset: '-translate-x-[calc(50%-5px)]',  top: 'top-0.5', z: 'z-[2]', focus: 'object-center' },
+    { angle: 'rotate-[18deg]',  hoverAngle: 'group-hover:rotate-[23deg]',  offset: '-translate-x-[calc(50%-16px)]', top: 'top-1.5', z: 'z-[1]', focus: 'object-[center_20%]' }
+  ]
+};
 
 export default function DiagnosisTab({
   onSaveDiagnosis,
@@ -38,9 +55,79 @@ export default function DiagnosisTab({
   const [aiLogMsg, setAiLogMsg]               = useState('');
   const [result, setResult]                   = useState(null);
 
-  const fileInputRef = useRef(null);
-  const progressRef  = useRef(null);
-  const blobUrlRef   = useRef(null);
+  const fileInputRef    = useRef(null);
+  const progressRef     = useRef(null);
+  const blobUrlRef      = useRef(null);
+  const nextPoolRef     = useRef(4);
+  const nextSlotRef     = useRef(0);
+  const cycleCountRef   = useRef(0);
+
+  const [cardCount, setCardCount]   = useState(4);
+  const [fadingSlot, setFadingSlot] = useState(null);
+
+  const fullPool = useMemo(() => {
+    const historyPhotos = (recentHistory || [])
+      .filter(x => x.photo || x.image)
+      .map(x => x.photo || x.image);
+    const combined = [...historyPhotos, ...DEFAULT_HERO_PHOTOS];
+    return Array.from(new Set(combined));
+  }, [recentHistory]);
+
+  const [deckPhotos, setDeckPhotos] = useState(() => [
+    DEFAULT_HERO_PHOTOS[0],
+    DEFAULT_HERO_PHOTOS[1],
+    DEFAULT_HERO_PHOTOS[2],
+    DEFAULT_HERO_PHOTOS[3]
+  ]);
+
+  // Sincroniza fotos iniciales
+  useEffect(() => {
+    if (fullPool.length > 0) {
+      setDeckPhotos([
+        fullPool[0 % fullPool.length] || DEFAULT_HERO_PHOTOS[0],
+        fullPool[1 % fullPool.length] || DEFAULT_HERO_PHOTOS[1],
+        fullPool[2 % fullPool.length] || DEFAULT_HERO_PHOTOS[2],
+        fullPool[3 % fullPool.length] || DEFAULT_HERO_PHOTOS[3]
+      ]);
+    }
+  }, [fullPool]);
+
+  // Rotación dinámica: alterna entre 4 cartas la mayor parte del tiempo y 3 cartas de vez en cuando
+  useEffect(() => {
+    if (processingState !== 'idle' || fullPool.length <= 1) return;
+
+    const intervalId = setInterval(() => {
+      cycleCountRef.current++;
+      // Alterna: 4 cartas la mayor parte del tiempo, y 3 cartas de vez en cuando (cada 3er ciclo)
+      const nextCount = (cycleCountRef.current % 3 === 2) ? 3 : 4;
+      setCardCount(nextCount);
+
+      const slotToSwap = nextSlotRef.current % nextCount;
+      nextSlotRef.current++;
+
+      // Fase 1: Desvanecer
+      setFadingSlot(slotToSwap);
+
+      // Fase 2: Reemplazo fotográfico en cota invisible
+      setTimeout(() => {
+        const nextPhoto = fullPool[nextPoolRef.current % fullPool.length];
+        nextPoolRef.current++;
+
+        setDeckPhotos(prev => {
+          const next = [...prev];
+          next[slotToSwap] = nextPhoto;
+          return next;
+        });
+
+        // Fase 3: Reaparición suave
+        setTimeout(() => {
+          setFadingSlot(null);
+        }, 50);
+      }, 300);
+    }, 3600);
+
+    return () => clearInterval(intervalId);
+  }, [processingState, fullPool]);
 
   const handleOpenCamera = useCallback(() => fileInputRef.current?.click(), []);
 
@@ -199,11 +286,6 @@ export default function DiagnosisTab({
 
   const activeDisease = result ? DISEASE_CATALOG[result.disease] : null;
 
-  const photoPool = (recentHistory || []).filter(x => x.photo || x.image).map(x => x.photo || x.image);
-  const leftPhoto = photoPool[1] || DEFAULT_HERO_PHOTOS[0];
-  const centerPhoto = photoPool[0] || DEFAULT_HERO_PHOTOS[1];
-  const rightPhoto = photoPool[2] || DEFAULT_HERO_PHOTOS[2];
-
   return (
     <div className="tab-content animate-fade-in">
       {/* ── Encabezado Superior con Marca ────────────────────────── */}
@@ -235,48 +317,40 @@ export default function DiagnosisTab({
         <div className="flex flex-col gap-5">
           {/* Tarjeta Principal de Escaneo (Diseño con Fotos Detrás del Botón de Cámara) */}
           <div className="p-6 rounded-3xl bg-[var(--color-surface-container-lowest)] dark:bg-[var(--color-surface-container)] border-none shadow-[0_2px_16px_rgba(18,30,23,0.04)] dark:shadow-none flex flex-col items-center text-center gap-4.5">
-            {/* Clúster Visual: Stack de Fotos en Abanico con Botón Central de Cámara */}
+            {/* Clúster Visual: Stack Dinámico de 4 o 3 Naipes con Eje Corto */}
             <div
               onClick={handleOpenCamera}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenCamera(); }}
-              className="relative w-[184px] h-[132px] mx-auto cursor-pointer select-none group"
+              className="relative w-[160px] h-[112px] mx-auto cursor-pointer select-none group flex items-center justify-center"
               title="Toma una foto o sube desde la galería"
             >
-              {/* Foto Izquierda (Inclinada -14deg) */}
-              <div className="w-[74px] h-[92px] rounded-2xl overflow-hidden shadow-md -rotate-[14deg] absolute left-3 top-2 border-2 border-white dark:border-stone-800 bg-stone-200 dark:bg-stone-800 group-hover:-rotate-[18deg] group-hover:-translate-x-1 transition-transform duration-300">
-                <img
-                  src={leftPhoto}
-                  alt="Muestra botánica izquierda"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
+              {/* Naipes adaptativos (4 cartas habitualmente, 3 de vez en cuando) */}
+              {(FAN_LAYOUTS[cardCount] || FAN_LAYOUTS[4]).map((cfg, idx) => (
+                <div
+                  key={idx}
+                  style={{ transformOrigin: '50% 102%' }}
+                  className={`w-[70px] h-[82px] rounded-2xl p-[2px] bg-white dark:bg-stone-700 shadow-md absolute left-1/2 ${cfg.offset} ${cfg.top} ${cfg.angle} ${cfg.hoverAngle} ${cfg.z} transition-all duration-500 ease-out will-change-transform`}
+                >
+                  <div
+                    className={`w-full h-full rounded-[13px] overflow-hidden bg-stone-200 dark:bg-stone-800 transition-all duration-300 ease-in-out ${
+                      fadingSlot === idx ? 'opacity-0 scale-75 blur-[2px]' : 'opacity-100 scale-100 blur-0'
+                    }`}
+                  >
+                    <img
+                      src={deckPhotos[idx] || DEFAULT_HERO_PHOTOS[idx % DEFAULT_HERO_PHOTOS.length]}
+                      alt={`Muestra botánica ${idx + 1}`}
+                      className={`w-full h-full object-cover ${cfg.focus} select-none pointer-events-none transition-transform duration-500 group-hover:scale-105`}
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              ))}
 
-              {/* Foto Derecha (Inclinada 14deg) */}
-              <div className="w-[74px] h-[92px] rounded-2xl overflow-hidden shadow-md rotate-[14deg] absolute right-3 top-2 border-2 border-white dark:border-stone-800 bg-stone-200 dark:bg-stone-800 group-hover:rotate-[18deg] group-hover:translate-x-1 transition-transform duration-300">
-                <img
-                  src={rightPhoto}
-                  alt="Muestra botánica derecha"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-
-              {/* Foto Central (Frontal con borde blanco) */}
-              <div className="w-[84px] h-[100px] rounded-2xl overflow-hidden shadow-lg absolute left-1/2 -translate-x-1/2 top-0 z-10 border-2 border-white dark:border-stone-700 bg-stone-300 dark:bg-stone-700 group-hover:scale-105 transition-transform duration-300">
-                <img
-                  src={centerPhoto}
-                  alt="Muestra botánica central"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-
-              {/* Botón Circular de Cámara Superpuesto en el Centro Inferior */}
-              <div className="w-14 h-14 rounded-full bg-white dark:bg-[var(--color-surface-container-high)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center absolute left-1/2 -translate-x-1/2 bottom-0 z-20 border border-stone-100 dark:border-stone-700 group-hover:scale-110 active:scale-95 transition-transform duration-200">
-                <IconCamera size={26} stroke={2} className="text-[#1E4D2B] dark:text-[#7ED4A2]" />
+              {/* Botón Circular de Cámara (Emerge directamente delante de la base de los naipes) */}
+              <div className="w-[64px] h-[64px] rounded-full bg-white dark:bg-stone-800 shadow-[0_8px_20px_rgba(0,0,0,0.15)] dark:shadow-[0_8px_20px_rgba(0,0,0,0.6)] border-[2.5px] border-white dark:border-stone-700 flex items-center justify-center absolute left-1/2 -translate-x-1/2 bottom-0 z-[10] transition-all duration-200 group-hover:scale-105 active:scale-95">
+                <IconCamera size={28} stroke={2.1} className="text-[#1E4D2B] dark:text-[#7ED4A2]" />
               </div>
             </div>
 
